@@ -1,6 +1,8 @@
 # SecretBox
 
-Zero-knowledge 패스워드 매니저.
+> 오직 당신만 아는 비밀번호 저장소.
+
+Zero-knowledge 비밀번호 매니저.
 서버는 마스터 비밀번호도, 저장된 비밀번호 평문도 절대 보지 못합니다.
 
 ## 아키텍처
@@ -202,7 +204,7 @@ v1 진행 중 (회원가입까지 완료):
 - ✅ Zero-knowledge architecture (KEK/DEK)
 - ✅ 회원가입 (UI + API + 클라/서버 양쪽 Argon2)
 - ⬜ 로그인 (Pre-login + 패스워드 검증 + 2FA 이메일)
-- ⬜ 금고 항목 CRUD
+- ⬜ 비밀번호 항목 CRUD
 - ⬜ 변경 기록 / 롤백
 - ⬜ 세션 관리
 

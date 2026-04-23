@@ -1,63 +1,275 @@
-import { Link, useLocation } from 'react-router-dom';
+import { ChangeEvent, FormEvent, useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+
 import Logo from '../components/Logo';
+import Button from '../components/Button';
+import FormField from '../components/FormField';
+import Modal from '../components/Modal';
+import SecurityExplainer from '../components/SecurityExplainer';
+import AlertModal from '../components/AlertModal';
+
+import { authApi } from '../api/auth';
+import { ApiError } from '../api/client';
+import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
+import { deriveAuthHash, deriveKek } from '../crypto/kdf';
+
 import './Login.css';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const REMEMBER_KEY = 'secretbox.rememberedEmail';
+
+interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+interface ErrorAlert {
+  title: string;
+  message?: string;
+}
 
 interface LocationState {
   justRegistered?: boolean;
   email?: string;
 }
 
+function mapApiErrorToAlert(error: unknown): ErrorAlert {
+  if (error instanceof ApiError) {
+    const titleByCode: Record<string, string> = {
+      INVALID_CREDENTIALS: '이메일 또는 비밀번호가 올바르지 않습니다',
+      VALIDATION_ERROR: '입력값을 확인해주세요',
+      TOO_MANY_ATTEMPTS: '잠시 후 다시 시도해주세요',
+      USER_NOT_FOUND: '이메일 또는 비밀번호가 올바르지 않습니다',
+    };
+    return {
+      title: titleByCode[error.code] ?? '로그인에 실패했습니다',
+      message: error.message,
+    };
+  }
+  return {
+    title: '서버에 연결할 수 없습니다',
+    message: '네트워크 상태를 확인한 뒤 다시 시도해주세요.',
+  };
+}
+
+function loadRemembered(): string | null {
+  try {
+    return localStorage.getItem(REMEMBER_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export default function Login() {
+  const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
+
+  const remembered = loadRemembered();
+  const initialEmail = state.email ?? remembered ?? '';
+
+  const [email, setEmail] = useState(initialEmail);
+  const [password, setPassword] = useState('');
+  const [rememberEmail, setRememberEmail] = useState(!!remembered);
+  const [showSecurity, setShowSecurity] = useState(false);
+
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
+
+  // 체크박스/이메일 변경 시 localStorage 동기화
+  useEffect(() => {
+    try {
+      if (rememberEmail && email && EMAIL_RE.test(email)) {
+        localStorage.setItem(REMEMBER_KEY, email);
+      } else if (!rememberEmail) {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
+    } catch {
+      // private mode 등에서 storage 접근 실패 → 무시
+    }
+  }, [rememberEmail, email]);
+
+  const mutation = useMutation({
+    mutationFn: async ({ email, password }: LoginPayload) => {
+      const params = await authApi.preLogin(email);
+      const kek = await deriveKek(password, {
+        salt: base64ToBytes(params.kdfSalt),
+        iterations: params.kdfIterations,
+        memoryKb: params.kdfMemoryKb,
+        parallelism: params.kdfParallelism,
+      });
+      const authHash = await deriveAuthHash(kek, password);
+      return authApi.login(email, bytesToBase64(authHash));
+    },
+    onSuccess: () => {
+      navigate('/vault');
+    },
+    onError: (error) => {
+      setErrorAlert(mapApiErrorToAlert(error));
+    },
+  });
+
+  function validate(): boolean {
+    let ok = true;
+    if (!email) {
+      setEmailError('필수 항목입니다.');
+      ok = false;
+    } else if (!EMAIL_RE.test(email)) {
+      setEmailError('올바른 이메일 형식이 아닙니다.');
+      ok = false;
+    } else {
+      setEmailError('');
+    }
+
+    if (!password) {
+      setPasswordError('필수 항목입니다.');
+      ok = false;
+    } else {
+      setPasswordError('');
+    }
+    return ok;
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!validate()) {
+      setErrorAlert({
+        title: '입력값을 확인해주세요',
+        message: '이메일과 비밀번호를 모두 입력해주세요.',
+      });
+      return;
+    }
+    mutation.mutate({ email, password });
+  }
+
+  function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
+    setEmail(e.target.value);
+  }
 
   return (
     <div className="page">
       <main className="login">
-        <header className="login__head">
-          <Logo size={28} />
-          <span className="eyebrow">
-            <span className="num">02</span> &nbsp;/&nbsp; 로그인
-          </span>
-        </header>
+        <section className="login__brand rise delay-1">
+          <span className="login__halo" aria-hidden />
+          <Logo size={42} pulsing={mutation.isPending} />
+          <h1 className="serif-display login__title">
+            <em>SecretBox</em>를 엽니다
+          </h1>
+          <p className="login__tagline">
+            오직 당신만 아는 비밀번호 저장소
+          </p>
+        </section>
+
+        <section className="login__intro rise delay-2">
+          <p className="login__lede">
+            마스터 비밀번호는 서버로 전송되지 않으며,<br />
+            저장된 데이터는 오직 본인만 열람할 수 있습니다.
+          </p>
+          <button
+            type="button"
+            className="login__explainLink"
+            onClick={() => setShowSecurity(true)}
+          >
+            <span className="login__explainIcon" aria-hidden>ⓘ</span>
+            <span>어떻게 작동하나요?</span>
+            <span className="login__explainArrow" aria-hidden>→</span>
+          </button>
+        </section>
 
         {state.justRegistered && (
-          <section className="login__success">
-            <span className="login__successSigil">✓</span>
-            <div>
-              <p className="login__successTitle">가입이 완료됐습니다.</p>
-              <p className="login__successBody">
-                {state.email && <><span className="mono">{state.email}</span> 계정이 생성됐습니다. </>}
-                로그인 화면은 다음 단계에서 추가될 예정입니다.
-              </p>
-            </div>
-          </section>
+          <p className="login__welcome rise delay-2">
+            <span className="login__welcomeDot" aria-hidden />
+            가입이 완료되었습니다. 이제 들어와주세요.
+          </p>
         )}
 
-        <h1 className="serif-display login__title">
-          로그인 <em>준비 중</em>
-        </h1>
+        <form className="login__form" onSubmit={handleSubmit} noValidate>
+          <div className="rise delay-3">
+            <FormField
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus={!initialEmail}
+              label="이메일"
+              placeholder="you@example.com"
+              value={email}
+              onChange={handleEmailChange}
+              error={emailError}
+            />
+          </div>
 
-        <p className="login__lede">
-          가입 정보가 데이터베이스에 잘 저장됐는지 확인하려면 아래 명령을 사용하세요.
+          <div className="rise delay-4">
+            <FormField
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              autoFocus={!!initialEmail}
+              label="마스터 비밀번호"
+              placeholder="••••••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              error={passwordError}
+            />
+          </div>
+
+          <label className="login__remember rise delay-5">
+            <input
+              type="checkbox"
+              checked={rememberEmail}
+              onChange={(e) => setRememberEmail(e.target.checked)}
+            />
+            <span className="login__rememberBox" aria-hidden />
+            <span className="login__rememberText">이메일 기억하기</span>
+          </label>
+
+          <div className="rise delay-6">
+            <Button
+              type="submit"
+              loading={mutation.isPending}
+              loadingLabel="잠금을 해제하는 중…"
+            >
+              열기
+            </Button>
+          </div>
+        </form>
+
+        <p className="login__altLink rise delay-6">
+          처음이신가요?&nbsp;
+          <Link to="/register" className="login__altAnchor">
+            회원가입 →
+          </Link>
         </p>
 
-        <pre className="login__code">
-{`docker exec secretbox-postgres psql -U secretbox -d secretbox \\
-  -c "SELECT email, kdf_iterations, length(protected_dek) AS dek_len FROM users;"`}
-        </pre>
-
-        <Link to="/register" className="login__back">
-          ← 가입 화면으로
-        </Link>
-
-        <p className="login__credit">
-          Crafted by{' '}
-          <span className="login__creditName">dev-jsshin</span>
-          {' '}·{' '}
-          <span className="login__creditName">신준섭</span>
-        </p>
+        <footer className="login__foot rise delay-6">
+          <p className="login__system">
+            ARGON2ID&nbsp;·&nbsp;HMAC-SHA256&nbsp;·&nbsp;AES-256-GCM&nbsp;·&nbsp;CLIENT-SIDE
+          </p>
+          <p className="login__credit">
+            Crafted by{' '}
+            <span className="login__creditName">dev-jsshin</span>
+            {' '}·{' '}
+            <span className="login__creditName">신준섭</span>
+          </p>
+        </footer>
       </main>
+
+      <Modal
+        isOpen={showSecurity}
+        onClose={() => setShowSecurity(false)}
+        title="비밀번호가 서버에 닿지 않는 이유"
+      >
+        <SecurityExplainer />
+      </Modal>
+
+      <AlertModal
+        isOpen={!!errorAlert}
+        onClose={() => setErrorAlert(null)}
+        variant="error"
+        title={errorAlert?.title ?? ''}
+        message={errorAlert?.message}
+      />
     </div>
   );
 }

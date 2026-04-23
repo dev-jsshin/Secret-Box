@@ -1,0 +1,48 @@
+.vault {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.vault__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vault__title {
+  font-size: clamp(1.7rem, 3.8vw, 2.1rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin-bottom: 0.5rem;
+}
+
+.vault__title em {
+  font-style: normal;
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.vault__lede {
+  font-family: var(--font-sans);
+  color: var(--ink-secondary);
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.vault__back {
+  font-family: var(--font-sans);
+  color: var(--amber);
+  font-size: 0.9rem;
+  font-weight: 700;
+  align-self: flex-start;
+  transition: color 200ms var(--ease);
+}
+
+.vault__back:hover {
+  color: var(--amber-glow);
+}

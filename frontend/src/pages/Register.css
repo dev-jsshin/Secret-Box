@@ -1,95 +1,59 @@
 .register {
   width: 100%;
-  max-width: 480px;
+  max-width: 420px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 1.3rem;
 }
 
-/* ---------- header ---------- */
-.register__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-/* ---------- intro ---------- */
-.register__intro {
+/* ---------- brand block (halo + logo + title) ---------- */
+.register__brand {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem 0 0.2rem;
+}
+
+.register__halo {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(
+    circle at center,
+    rgba(212, 146, 74, 0.26) 0%,
+    rgba(212, 146, 74, 0.10) 18%,
+    rgba(212, 146, 74, 0.02) 38%,
+    transparent 62%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: haloBreath 5s ease-in-out infinite;
+}
+
+.register__brand > svg,
+.register__title {
+  position: relative;
+  z-index: 1;
 }
 
 .register__title {
-  font-size: clamp(1.8rem, 3.8vw, 2.2rem);
+  font-size: clamp(1.6rem, 3.6vw, 1.95rem);
   font-weight: 600;
   letter-spacing: -0.025em;
-  line-height: 1.2;
+  line-height: 1.25;
+  text-align: center;
 }
 
 .register__title em {
   font-style: normal;
   color: var(--amber);
   font-weight: 800;
-}
-
-.register__lede {
-  font-family: var(--font-display);
-  font-size: 0.9rem;
-  line-height: 1.65;
-  color: var(--ink-secondary);
-  letter-spacing: 0.005em;
-}
-
-/* "어떻게 작동하나요?" — 강조된 칩/배지 */
-.register__explainLink {
-  align-self: flex-start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.7rem;
-  padding: 0.5rem 0.85rem;
-  background: rgba(212, 146, 74, 0.1);
-  border: 1px solid rgba(212, 146, 74, 0.42);
-  border-radius: 2px;
-  font-family: var(--font-sans);
-  font-size: 0.83rem;
-  font-weight: 600;
-  color: var(--amber-glow);
-  letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: background 220ms var(--ease), border-color 220ms var(--ease),
-              color 220ms var(--ease), transform 220ms var(--ease),
-              box-shadow 220ms var(--ease);
-  box-shadow: 0 0 0 0 rgba(212, 146, 74, 0);
-}
-
-.register__explainLink:hover {
-  background: rgba(212, 146, 74, 0.18);
-  border-color: var(--amber);
-  color: #FFE9C9;
-  transform: translateY(-1px);
-  box-shadow: 0 8px 24px -10px rgba(212, 146, 74, 0.55);
-}
-
-.register__explainIcon {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1;
-  color: var(--amber);
-}
-
-.register__explainArrow {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1;
-  transition: transform 220ms var(--ease);
-}
-
-.register__explainLink:hover .register__explainArrow {
-  transform: translateX(3px);
 }
 
 /* ---------- form ---------- */
@@ -101,21 +65,12 @@
 
 /* ---------- warning ---------- */
 .register__warn {
-  position: relative;
-  padding: 0.7rem 0.95rem 0.7rem 1.1rem;
+  padding: 0.7rem 0.95rem;
   background: rgba(217, 168, 97, 0.04);
-  border: 1px solid rgba(217, 168, 97, 0.18);
+  border: 1px solid rgba(217, 168, 97, 0.22);
   border-radius: 1px;
   margin-top: 0.2rem;
-}
-
-.register__warnRule {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  background: var(--warning);
+  text-align: center;
 }
 
 .register__warnText {
@@ -177,50 +132,31 @@
   color: var(--ink-secondary);
 }
 
-/* ---------- API error ---------- */
-.register__apiError {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  padding: 0.65rem 0.85rem;
-  background: rgba(201, 115, 115, 0.06);
-  border: 1px solid rgba(201, 115, 115, 0.32);
-  color: var(--danger);
-  font-family: var(--font-sans);
-  font-size: 0.8rem;
-  letter-spacing: 0.005em;
-  line-height: 1.5;
-  animation: rise 0.4s var(--ease);
+/* ---------- alt link (footer 위) ---------- */
+.register__altLink {
+  font-size: 0.88rem;
+  color: var(--ink-secondary);
+  text-align: center;
+  margin-top: 0.5rem;
 }
 
-.register__apiErrorTag {
-  font-family: var(--font-mono);
-  font-size: 13px;
-  line-height: 1;
-  margin-top: 1px;
-}
-
-/* ---------- footer ---------- */
+/* ---------- footer (선 + system + credit) ---------- */
 .register__foot {
   display: flex;
   flex-direction: column;
-  gap: 0.7rem;
+  gap: 0.5rem;
   margin-top: 0.4rem;
-  padding-top: 0.9rem;
+  padding-top: 1rem;
   border-top: 1px solid var(--line-subtle);
-}
-
-.register__altLink {
-  font-size: 0.85rem;
-  color: var(--ink-secondary);
+  text-align: center;
 }
 
 .register__altAnchor {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   color: var(--amber);
+  font-weight: 700;
   letter-spacing: 0.005em;
   position: relative;
-  font-weight: 700;
   transition: color 200ms var(--ease);
 }
 
@@ -269,9 +205,13 @@
 /* ---------- responsive ---------- */
 @media (max-width: 480px) {
   .register {
-    gap: 1.2rem;
+    gap: 1.1rem;
   }
   .register__title {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
+  }
+  .register__halo {
+    width: 220px;
+    height: 220px;
   }
 }

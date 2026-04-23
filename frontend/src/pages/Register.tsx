@@ -6,8 +6,6 @@ import Logo from '../components/Logo';
 import Button from '../components/Button';
 import FormField from '../components/FormField';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
-import Modal from '../components/Modal';
-import SecurityExplainer from '../components/SecurityExplainer';
 import AlertModal from '../components/AlertModal';
 import { scorePassword } from '../lib/passwordTools';
 
@@ -58,7 +56,6 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [agreed, setAgreed] = useState(false);
-  const [showSecurity, setShowSecurity] = useState(false);
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
   const [emailError, setEmailError] = useState('');
@@ -145,8 +142,7 @@ export default function Register() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    // 체크박스 미동의 시 버튼이 disabled라 여기 도달하지 않지만, 안전장치
-    if (!agreed) return;
+    if (!agreed) return;   // 버튼 disabled로 막혀있지만 안전장치
 
     const { ok, mismatch } = validate();
     if (mismatch) {
@@ -169,34 +165,16 @@ export default function Register() {
   return (
     <div className="page">
       <main className="register">
-        <header className="register__head rise delay-1">
-          <Logo size={28} pulsing={mutation.isPending} />
-          <span className="eyebrow">
-            <span className="num">01</span> &nbsp;/&nbsp; 회원가입
-          </span>
-        </header>
-
-        <section className="register__intro rise delay-2">
+        <section className="register__brand rise delay-1">
+          <span className="register__halo" aria-hidden />
+          <Logo size={42} pulsing={mutation.isPending} />
           <h1 className="serif-display register__title">
-            <em>금고</em>를 만듭니다
+            <em>SecretBox</em>를 만듭니다
           </h1>
-          <p className="register__lede">
-            마스터 비밀번호는 서버로 전송되지 않으며,<br />
-            저장된 데이터는 오직 본인만 열람할 수 있습니다.
-          </p>
-          <button
-            type="button"
-            className="register__explainLink"
-            onClick={() => setShowSecurity(true)}
-          >
-            <span className="register__explainIcon" aria-hidden>ⓘ</span>
-            <span>어떻게 작동하나요?</span>
-            <span className="register__explainArrow" aria-hidden>→</span>
-          </button>
         </section>
 
         <form className="register__form" onSubmit={handleSubmit} noValidate>
-          <div className="rise delay-3">
+          <div className="rise delay-2">
             <FormField
               id="email"
               type="email"
@@ -211,7 +189,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="rise delay-4">
+          <div className="rise delay-3">
             <FormField
               id="password"
               type="password"
@@ -225,7 +203,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="rise delay-5">
+          <div className="rise delay-4">
             <FormField
               id="confirm"
               type="password"
@@ -240,15 +218,14 @@ export default function Register() {
             />
           </div>
 
-          <aside className="register__warn rise delay-6">
-            <span className="register__warnRule" aria-hidden />
+          <aside className="register__warn rise delay-5">
             <p className="register__warnText">
               마스터 비밀번호를 잊으면 모든 데이터를 영구적으로 잃습니다.<br />
               서버에 백업이 없어 복구할 수 없습니다.
             </p>
           </aside>
 
-          <label className="register__terms rise delay-7">
+          <label className="register__terms rise delay-6">
             <input
               type="checkbox"
               checked={agreed}
@@ -260,25 +237,26 @@ export default function Register() {
             </span>
           </label>
 
-          <div className="rise delay-8">
+          <div className="rise delay-7">
             <Button
               type="submit"
               loading={mutation.isPending}
               loadingLabel="암호화 처리 중…"
               disabled={!agreed}
             >
-              가입하기
+              만들기
             </Button>
           </div>
         </form>
 
-        <footer className="register__foot rise delay-8">
-          <p className="register__altLink">
-            이미 가입하셨나요?&nbsp;
-            <Link to="/login" className="register__altAnchor">
-              로그인 →
-            </Link>
-          </p>
+        <p className="register__altLink rise delay-7">
+          이미 가입하셨나요?&nbsp;
+          <Link to="/login" className="register__altAnchor">
+            로그인 →
+          </Link>
+        </p>
+
+        <footer className="register__foot rise delay-7">
           <p className="register__system">
             ARGON2ID&nbsp;·&nbsp;HMAC-SHA256&nbsp;·&nbsp;AES-256-GCM&nbsp;·&nbsp;CLIENT-SIDE
           </p>
@@ -290,14 +268,6 @@ export default function Register() {
           </p>
         </footer>
       </main>
-
-      <Modal
-        isOpen={showSecurity}
-        onClose={() => setShowSecurity(false)}
-        title="비밀번호가 서버에 닿지 않는 이유"
-      >
-        <SecurityExplainer />
-      </Modal>
 
       <AlertModal
         isOpen={!!errorAlert}
