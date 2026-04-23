@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Claude Code
+.claude/
+
+# Env
+.env
+.env.local
+*.local
+
+# Node
+node_modules/
+dist/
+.vite/
+coverage/
+*.log
+
+# Java / Gradle
+backend/build/
+backend/.gradle/
+backend/out/
+backend/bin/
+*.class
+
+# Docker volumes
+postgres-data/
+
+# Secrets
+*.pem
+*.key
+*.p12
