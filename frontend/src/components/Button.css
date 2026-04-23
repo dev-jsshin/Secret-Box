@@ -12,7 +12,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.005em;
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
   transition: transform 240ms var(--ease), box-shadow 240ms var(--ease),
               background 240ms var(--ease);

@@ -1,5 +1,9 @@
 package com.secretbox.auth.service;
 
+import com.secretbox.auth.dto.LoginRequest;
+import com.secretbox.auth.dto.LoginResponse;
+import com.secretbox.auth.dto.PreLoginRequest;
+import com.secretbox.auth.dto.PreLoginResponse;
 import com.secretbox.auth.dto.RegisterRequest;
 import com.secretbox.auth.dto.RegisterResponse;
 import com.secretbox.common.exception.ApiException;
@@ -14,6 +18,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.Base64;
 
 @Slf4j
@@ -22,6 +31,7 @@ import java.util.Base64;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtService jwtService;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
     @Value("${app.security.kdf.min-iterations}")
@@ -33,10 +43,18 @@ public class AuthService {
     @Value("${app.security.kdf.min-parallelism}")
     private int minParallelism;
 
-    // Server-side Argon2 params: authHash를 DB에 저장하기 전 한 번 더 해시
+    @Value("${app.jwt.secret}")
+    private String jwtSecret;
+
     private static final int SERVER_ARGON2_ITERATIONS = 3;
     private static final int SERVER_ARGON2_MEMORY_KB = 65536;
     private static final int SERVER_ARGON2_PARALLELISM = 4;
+
+    private static final int DUMMY_SALT_LENGTH = 16;
+
+    // ==========================================================
+    // Register
+    // ==========================================================
 
     @Transactional
     public RegisterResponse register(RegisterRequest req) {
@@ -47,8 +65,6 @@ public class AuthService {
                 "이미 가입된 이메일입니다");
         }
 
-        // 클라이언트의 authHash는 이미 HMAC으로 유도된 값이지만,
-        // DB 탈취 시 재공격 방지를 위해 서버에서도 Argon2로 한 번 더 해시.
         String storedAuthHash = argon2.hash(
             SERVER_ARGON2_ITERATIONS,
             SERVER_ARGON2_MEMORY_KB,
@@ -87,6 +103,78 @@ public class AuthService {
                 "KDF 파라미터가 최소 요구 사양보다 약합니다");
         }
     }
+
+    // ==========================================================
+    // Pre-login: KDF 파라미터 응답
+    // 이메일 존재 여부를 노출하지 않으려면 미가입 이메일에도 deterministic dummy salt를 줘야 한다.
+    // ==========================================================
+
+    public PreLoginResponse preLogin(PreLoginRequest req) {
+        return userRepository.findByEmail(req.email())
+            .map(user -> new PreLoginResponse(
+                Base64.getEncoder().encodeToString(user.getKdfSalt()),
+                user.getKdfIterations(),
+                user.getKdfMemoryKb(),
+                user.getKdfParallelism()
+            ))
+            .orElseGet(() -> new PreLoginResponse(
+                Base64.getEncoder().encodeToString(generateDummySalt(req.email())),
+                SERVER_ARGON2_ITERATIONS,
+                SERVER_ARGON2_MEMORY_KB,
+                SERVER_ARGON2_PARALLELISM
+            ));
+    }
+
+    private byte[] generateDummySalt(String email) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] full = mac.doFinal(email.toLowerCase().getBytes(StandardCharsets.UTF_8));
+            return Arrays.copyOf(full, DUMMY_SALT_LENGTH);
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("HMAC 초기화 실패", e);
+        }
+    }
+
+    // ==========================================================
+    // Login: authHash 검증 + JWT 발급
+    // ==========================================================
+
+    public LoginResponse login(LoginRequest req) {
+        User user = userRepository.findByEmail(req.email())
+            .orElseThrow(() -> invalidCredentials());
+
+        boolean valid;
+        try {
+            valid = argon2.verify(user.getAuthHash(), req.authHash().toCharArray());
+        } catch (Exception e) {
+            log.warn("Argon2 verify failed for email={}: {}", req.email(), e.getMessage());
+            valid = false;
+        }
+
+        if (!valid) {
+            throw invalidCredentials();
+        }
+
+        String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail());
+        log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
+
+        return new LoginResponse(
+            accessToken,
+            Base64.getEncoder().encodeToString(user.getProtectedDek()),
+            Base64.getEncoder().encodeToString(user.getProtectedDekIv()),
+            new LoginResponse.UserSummary(user.getId(), user.getEmail())
+        );
+    }
+
+    private ApiException invalidCredentials() {
+        return new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS",
+            "이메일 또는 비밀번호가 올바르지 않습니다");
+    }
+
+    // ==========================================================
+    // Helpers
+    // ==========================================================
 
     private byte[] decodeBase64(String value, String fieldName) {
         try {

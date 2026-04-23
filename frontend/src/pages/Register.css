@@ -105,6 +105,7 @@
   height: 16px;
   margin-top: 3px;
   border: 1px solid var(--line-strong);
+  border-radius: 3px;
   position: relative;
   transition: border-color 200ms var(--ease), background 200ms var(--ease);
 }

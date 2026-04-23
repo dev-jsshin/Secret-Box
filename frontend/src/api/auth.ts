@@ -7,17 +7,14 @@ export interface PreLoginResponse {
   kdfParallelism: number;
 }
 
+/**
+ * v1: 2FA 미구현 → 로그인 응답에 access token + protected DEK 직접 포함.
+ * v2 추가 예정: 2FA enabled 사용자는 { twoFactorRequired: true, twoFactorToken } 반환.
+ */
 export interface LoginResponse {
-  twoFactorRequired: boolean;
-  twoFactorToken: string;
-  method: 'email';
-}
-
-export interface TwoFactorVerifyResponse {
   accessToken: string;
-  refreshToken: string;
-  protectedDek: string;
-  protectedDekIv: string;
+  protectedDek: string;       // base64
+  protectedDekIv: string;     // base64
   user: { id: string; email: string };
 }
 
@@ -50,29 +47,5 @@ export const authApi = {
     apiFetch<LoginResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, authHash }),
-    }),
-
-  verifyTwoFactor: (twoFactorToken: string, code: string) =>
-    apiFetch<TwoFactorVerifyResponse>('/auth/2fa/verify', {
-      method: 'POST',
-      body: JSON.stringify({ twoFactorToken, code }),
-    }),
-
-  resendTwoFactor: (twoFactorToken: string) =>
-    apiFetch<void>('/auth/2fa/resend', {
-      method: 'POST',
-      body: JSON.stringify({ twoFactorToken }),
-    }),
-
-  refresh: (refreshToken: string) =>
-    apiFetch<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
-    }),
-
-  logout: (refreshToken: string) =>
-    apiFetch<void>('/auth/logout', {
-      method: 'POST',
-      body: JSON.stringify({ refreshToken }),
     }),
 };

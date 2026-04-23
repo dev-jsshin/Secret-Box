@@ -1,48 +1,386 @@
 .vault {
   width: 100%;
-  max-width: 480px;
+  max-width: 720px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+/* ---------- header ---------- */
+.vault__head {
   display: flex;
   flex-direction: column;
   gap: 1.4rem;
 }
 
-.vault__head {
+/* top strip: brand + user actions */
+.vault__topStrip {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line-subtle);
 }
 
-.vault__title {
-  font-size: clamp(1.7rem, 3.8vw, 2.1rem);
+.vault__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.vault__wordmark {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink-primary);
+}
+
+.vault__user {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.vault__email {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-secondary);
+}
+
+.vault__logout {
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease);
+}
+
+.vault__logout:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* hero block: eyebrow + title + breakdown */
+.vault__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.vault__heroTitle {
+  font-family: var(--font-sans);
+  font-size: clamp(1.5rem, 3.6vw, 1.85rem);
   font-weight: 600;
   letter-spacing: -0.025em;
-  line-height: 1.25;
-  margin-bottom: 0.5rem;
+  line-height: 1.3;
+  color: var(--ink-primary);
 }
 
-.vault__title em {
+.vault__heroTitle em {
   font-style: normal;
   color: var(--amber);
   font-weight: 800;
 }
 
-.vault__lede {
-  font-family: var(--font-sans);
-  color: var(--ink-secondary);
-  font-size: 0.92rem;
-  line-height: 1.65;
+.vault__breakdown {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.1rem;
 }
 
-.vault__back {
-  font-family: var(--font-sans);
+.vault__breakdownItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.75rem;
+  border: 1px solid var(--line-default);
+  border-radius: 999px;
+  background: rgba(232, 226, 207, 0.02);
+  transition: border-color 180ms var(--ease), background 180ms var(--ease);
+}
+
+.vault__breakdownItem:hover {
+  border-color: rgba(212, 146, 74, 0.35);
+  background: rgba(212, 146, 74, 0.04);
+}
+
+.vault__breakdownLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.vault__breakdownCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
   color: var(--amber);
+  letter-spacing: 0.02em;
+}
+
+/* ---------- toolbar (search + add) ---------- */
+.vault__toolbar {
+  display: flex;
+  gap: 0.7rem;
+  align-items: stretch;
+}
+
+.vault__search {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--line-default);
+  border-radius: 6px;
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  padding: 0.55rem 0.85rem;
+  outline: 0;
+  transition: border-color 180ms var(--ease);
+}
+
+.vault__search:focus {
+  border-color: var(--amber);
+}
+
+.vault__search::placeholder {
+  color: var(--ink-faint);
+}
+
+.vault__addBtn {
+  flex: 0 0 auto;
+  padding: 0.55rem 1rem;
+  background: var(--amber);
+  color: #1A1108;
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 180ms var(--ease);
+}
+
+.vault__addBtn:hover {
+  background: var(--amber-glow);
+}
+
+/* ---------- content ---------- */
+.vault__content {
+  flex: 1;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.vault__state {
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  padding: 2rem 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vault__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.95rem;
+  padding: 2.5rem 1.5rem;
+  min-height: 360px;
+  border: 1px dashed var(--line-default);
+  border-radius: 10px;
+  background: rgba(232, 226, 207, 0.015);
+}
+
+.vault__empty--noResults {
+  background: transparent;
+  border-color: var(--line-subtle);
+  min-height: 280px;
+}
+
+.vault__emptyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center,
+      rgba(212, 146, 74, 0.18) 0%,
+      rgba(212, 146, 74, 0.04) 50%,
+      transparent 75%);
+  position: relative;
+}
+
+.vault__emptyIcon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 146, 74, 0.22);
+}
+
+.vault__emptyTitle {
+  font-family: var(--font-sans);
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+}
+
+.vault__emptyBody {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+  line-height: 1.65;
+  max-width: 32ch;
+}
+
+.vault__emptyCta {
+  margin-top: 0.5rem;
+  padding: 0.7rem 1.5rem;
+  background: var(--amber);
+  color: #1A1108;
+  border: 1px solid var(--amber);
+  border-radius: 8px;
+  font-family: var(--font-sans);
   font-size: 0.9rem;
   font-weight: 700;
-  align-self: flex-start;
-  transition: color 200ms var(--ease);
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: background 200ms var(--ease), transform 200ms var(--ease),
+              box-shadow 200ms var(--ease);
+  box-shadow: 0 10px 28px -16px rgba(212, 146, 74, 0.55);
 }
 
-.vault__back:hover {
-  color: var(--amber-glow);
+.vault__emptyCta:hover {
+  background: var(--amber-glow);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px -16px rgba(229, 176, 105, 0.7);
+}
+
+/* ---------- items list ---------- */
+.vault__items {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.vault__card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), background 180ms var(--ease),
+              transform 180ms var(--ease);
+}
+
+.vault__card:hover {
+  border-color: rgba(212, 146, 74, 0.4);
+  background: rgba(212, 146, 74, 0.04);
+  transform: translateX(2px);
+}
+
+.vault__cardInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.vault__cardName {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault__cardUser {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vault__cardCat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  padding: 2px 6px;
+  border: 1px solid var(--line-default);
+  flex-shrink: 0;
+}
+
+/* ---------- footer ---------- */
+.vault__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line-subtle);
+  text-align: center;
+}
+
+.vault__system {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+
+.vault__credit {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.vault__creditName {
+  color: var(--amber);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 600px) {
+  .vault__cardCat {
+    display: none;
+  }
 }

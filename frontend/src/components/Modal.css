@@ -25,20 +25,18 @@
   overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--line-default);
-  border-top: 2px solid var(--amber);
-  padding: 1.8rem 1.8rem 1.6rem;
-  box-shadow:
-    0 30px 80px -30px rgba(0, 0, 0, 0.8),
-    0 1px 0 rgba(212, 146, 74, 0.1) inset;
+  border-radius: 10px;
+  padding: 2.4rem 1.8rem 1.6rem;   /* X 버튼 공간 확보로 콘텐츠가 풀 너비로 확장 가능 */
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
   animation: rise 0.45s var(--ease) both;
 }
 
 .sb-modal__close {
   position: absolute;
-  top: 0.85rem;
-  right: 0.85rem;
-  width: 28px;
-  height: 28px;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 26px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

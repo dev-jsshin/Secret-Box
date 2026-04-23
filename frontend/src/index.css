@@ -105,6 +105,14 @@ button, input, textarea, select {
   color: inherit;
 }
 
+/* 모던한 가벼운 플레이스홀더 — 전체 적용 */
+input::placeholder,
+textarea::placeholder {
+  font-weight: 300;
+  letter-spacing: 0;
+  color: var(--ink-faint);
+}
+
 button {
   background: none;
   border: none;

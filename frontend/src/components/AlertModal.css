@@ -29,25 +29,21 @@
   padding: 1.6rem 1.75rem 1.3rem;
   background: var(--bg-elevated);
   border: 1px solid var(--line-default);
-  border-top: 2px solid var(--amber);
+  border-radius: 10px;
   animation: alertPop 0.24s cubic-bezier(0.18, 0.89, 0.4, 1.14) both;
-  box-shadow:
-    0 30px 80px -30px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.85);
 }
 
-/* variant: 상단 보더 + sigil 색상만 (currentColor) */
+/* variant: sigil 색상만 (currentColor) — 상단 보더는 제거 */
 .sb-alert--error .sb-alert__card {
-  border-top-color: var(--danger);
   color: var(--danger);
 }
 
 .sb-alert--warning .sb-alert__card {
-  border-top-color: var(--warning);
   color: var(--warning);
 }
 
 .sb-alert--info .sb-alert__card {
-  border-top-color: var(--amber);
   color: var(--amber);
 }
 
@@ -88,7 +84,7 @@
   font-size: 0.88rem;
   font-weight: 700;
   letter-spacing: 0.005em;
-  border-radius: 2px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 180ms var(--ease),
               transform 180ms var(--ease),

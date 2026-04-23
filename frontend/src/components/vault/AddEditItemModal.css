@@ -1,0 +1,343 @@
+/* ========================================================================
+   Step 1: 카탈로그 그리드 (서비스 선택)
+   ======================================================================== */
+.ai-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ai-pick__title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+}
+
+.ai-pick__title em {
+  font-style: normal;
+  color: var(--amber);
+  font-weight: 800;
+}
+
+.ai-pick__lede {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  line-height: 1.55;
+  margin-top: -0.4rem;
+}
+
+.ai-pick__search {
+  background: transparent;
+  border: 1px solid var(--line-default);
+  border-radius: 6px;
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  padding: 0.55rem 0.85rem;
+  outline: 0;
+  transition: border-color 180ms var(--ease);
+}
+
+.ai-pick__search:focus {
+  border-color: var(--amber);
+}
+
+.ai-pick__search::placeholder {
+  color: var(--ink-faint);
+}
+
+.ai-pick__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 0.5rem;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0.1rem;
+}
+
+.ai-pick__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.85rem 0.6rem 0.7rem;
+  background: var(--bg-base);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 180ms var(--ease), background 180ms var(--ease),
+              transform 180ms var(--ease);
+}
+
+.ai-pick__cell:hover {
+  border-color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
+  transform: translateY(-1px);
+}
+
+.ai-pick__cellName {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.ai-pick__cellCat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ai-pick__empty {
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  padding: 2rem 0;
+}
+
+.ai-pick__customRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.ai-pick__customLabel {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+}
+
+.ai-pick__customBtn {
+  padding: 0.5rem 0.9rem;
+  background: rgba(212, 146, 74, 0.1);
+  border: 1px solid rgba(212, 146, 74, 0.42);
+  border-radius: 6px;
+  color: var(--amber-glow);
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms var(--ease), border-color 180ms var(--ease);
+}
+
+.ai-pick__customBtn:hover {
+  background: rgba(212, 146, 74, 0.18);
+  border-color: var(--amber);
+}
+
+/* ========================================================================
+   Step 2: 폼 (자격 증명 입력)
+   ======================================================================== */
+.ai-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ai-form__pickedBanner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 2.2rem 0.7rem 0.85rem;   /* 우측에 X 버튼 자리 */
+  background: var(--bg-base);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
+}
+
+.ai-form__pickedInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.ai-form__pickedName {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-form__pickedHint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+}
+
+/* 우측 상단 X — 카탈로그 선택 해제 (= pick step으로 복귀) */
+.ai-form__pickedClose {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 180ms var(--ease), color 180ms var(--ease),
+              border-color 180ms var(--ease);
+}
+
+.ai-form__pickedClose:hover {
+  background: rgba(232, 226, 207, 0.06);
+  border-color: var(--line-default);
+  color: var(--ink-primary);
+}
+
+.ai-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ai-form__label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--ink-secondary);
+}
+
+.ai-form__lockHint {
+  color: var(--ink-muted);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.005em;
+}
+
+.ai-form__select {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line-default);
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  padding: 0.55rem 0 0.5rem;
+  outline: 0;
+  cursor: pointer;
+}
+
+.ai-form__select:focus {
+  border-bottom-color: var(--amber);
+}
+
+.ai-form__select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+  color: var(--ink-secondary);
+}
+
+.ai-form__select option {
+  background: var(--bg-elevated);
+  color: var(--ink-primary);
+}
+
+.ai-form__textarea {
+  background: transparent;
+  border: 1px solid var(--line-default);
+  border-radius: 6px;
+  color: var(--ink-primary);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  padding: 0.6rem 0.7rem;
+  outline: 0;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.ai-form__textarea:focus {
+  border-color: var(--amber);
+}
+
+.ai-form__pwRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+}
+
+.ai-form__pwField {
+  flex: 1;
+  min-width: 0;
+}
+
+.ai-form__genBtn {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.85rem;
+  background: rgba(212, 146, 74, 0.08);
+  border: 1px solid rgba(212, 146, 74, 0.32);
+  border-radius: 6px;
+  color: var(--amber);
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: background 200ms var(--ease), border-color 200ms var(--ease);
+  margin-bottom: 18px;
+}
+
+.ai-form__genBtn:hover {
+  background: rgba(212, 146, 74, 0.18);
+  border-color: var(--amber);
+}
+
+.ai-form__actions {
+  display: flex;
+  gap: 0.7rem;
+  margin-top: 0.5rem;
+}
+
+.ai-form__cancel {
+  flex: 0 0 auto;
+  padding: 0.85rem 1.5rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 200ms var(--ease), color 200ms var(--ease);
+}
+
+.ai-form__cancel:hover:not(:disabled) {
+  border-color: var(--ink-secondary);
+  color: var(--ink-primary);
+}
+
+.ai-form__cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ai-form__actions .sb-button {
+  flex: 1;
+}

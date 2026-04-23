@@ -10,9 +10,11 @@ import SecurityExplainer from '../components/SecurityExplainer';
 import AlertModal from '../components/AlertModal';
 
 import { authApi } from '../api/auth';
-import { ApiError } from '../api/client';
+import { ApiError, setAccessToken } from '../api/client';
 import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
+import { decrypt } from '../crypto/cipher';
 import { deriveAuthHash, deriveKek } from '../crypto/kdf';
+import { useSessionStore } from '../store/session';
 
 import './Login.css';
 
@@ -65,6 +67,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state ?? {}) as LocationState;
+  const setSession = useSessionStore((s) => s.setSession);
 
   const remembered = loadRemembered();
   const initialEmail = state.email ?? remembered ?? '';
@@ -93,17 +96,39 @@ export default function Login() {
 
   const mutation = useMutation({
     mutationFn: async ({ email, password }: LoginPayload) => {
+      // 1) KDF 파라미터 받기
       const params = await authApi.preLogin(email);
-      const kek = await deriveKek(password, {
+      const kdfParams = {
         salt: base64ToBytes(params.kdfSalt),
         iterations: params.kdfIterations,
         memoryKb: params.kdfMemoryKb,
         parallelism: params.kdfParallelism,
-      });
+      };
+
+      // 2) KEK + authHash 파생
+      const kek = await deriveKek(password, kdfParams);
       const authHash = await deriveAuthHash(kek, password);
-      return authApi.login(email, bytesToBase64(authHash));
+
+      // 3) 서버 검증 → JWT + protectedDek
+      const result = await authApi.login(email, bytesToBase64(authHash));
+
+      // 4) protectedDek을 KEK로 풀어서 DEK 복구 (브라우저 안에서만)
+      const dek = await decrypt(
+        kek,
+        base64ToBytes(result.protectedDek),
+        base64ToBytes(result.protectedDekIv),
+      );
+
+      return { result, dek };
     },
-    onSuccess: () => {
+    onSuccess: ({ result, dek }) => {
+      setAccessToken(result.accessToken);
+      setSession({
+        userId: result.user.id,
+        email: result.user.email,
+        accessToken: result.accessToken,
+        dek,
+      });
       navigate('/vault');
     },
     onError: (error) => {
