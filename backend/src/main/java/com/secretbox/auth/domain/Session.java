@@ -29,7 +29,7 @@ public class Session {
     @Column(name = "user_agent")
     private String userAgent;
 
-    @Column(name = "ip_address", columnDefinition = "inet")
+    @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
     @Column(name = "expires_at", nullable = false)

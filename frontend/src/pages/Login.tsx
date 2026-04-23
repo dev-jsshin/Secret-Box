@@ -10,7 +10,7 @@ import SecurityExplainer from '../components/SecurityExplainer';
 import AlertModal from '../components/AlertModal';
 
 import { authApi } from '../api/auth';
-import { ApiError, setAccessToken } from '../api/client';
+import { ApiError, setAccessToken, setRefreshToken } from '../api/client';
 import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
 import { decrypt } from '../crypto/cipher';
 import { deriveAuthHash, deriveKek } from '../crypto/kdf';
@@ -123,6 +123,7 @@ export default function Login() {
     },
     onSuccess: ({ result, dek }) => {
       setAccessToken(result.accessToken);
+      setRefreshToken(result.refreshToken);
       setSession({
         userId: result.user.id,
         email: result.user.email,

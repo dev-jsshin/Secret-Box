@@ -4,6 +4,7 @@ import com.secretbox.auth.dto.LoginRequest;
 import com.secretbox.auth.dto.LoginResponse;
 import com.secretbox.auth.dto.PreLoginRequest;
 import com.secretbox.auth.dto.PreLoginResponse;
+import com.secretbox.auth.dto.RefreshResponse;
 import com.secretbox.auth.dto.RegisterRequest;
 import com.secretbox.auth.dto.RegisterResponse;
 import com.secretbox.common.exception.ApiException;
@@ -32,6 +33,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
     @Value("${app.security.kdf.min-iterations}")
@@ -140,7 +142,8 @@ public class AuthService {
     // Login: authHash 검증 + JWT 발급
     // ==========================================================
 
-    public LoginResponse login(LoginRequest req) {
+    @Transactional
+    public LoginResponse login(LoginRequest req, String userAgent, String ipAddress) {
         User user = userRepository.findByEmail(req.email())
             .orElseThrow(() -> invalidCredentials());
 
@@ -157,14 +160,31 @@ public class AuthService {
         }
 
         String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail());
+        String refreshToken = refreshTokenService.issue(user.getId(), userAgent, ipAddress);
         log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
 
         return new LoginResponse(
             accessToken,
+            refreshToken,
             Base64.getEncoder().encodeToString(user.getProtectedDek()),
             Base64.getEncoder().encodeToString(user.getProtectedDekIv()),
             new LoginResponse.UserSummary(user.getId(), user.getEmail())
         );
+    }
+
+    @Transactional
+    public RefreshResponse refresh(String refreshToken, String userAgent, String ipAddress) {
+        var rotated = refreshTokenService.rotate(refreshToken, userAgent, ipAddress);
+        User user = userRepository.findById(rotated.userId())
+            .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
+                "INVALID_REFRESH_TOKEN", "다시 로그인해주세요"));
+        String newAccess = jwtService.issueAccessToken(user.getId(), user.getEmail());
+        return new RefreshResponse(newAccess, rotated.newRefreshToken());
+    }
+
+    @Transactional
+    public void logout(String refreshToken) {
+        refreshTokenService.revoke(refreshToken);
     }
 
     private ApiException invalidCredentials() {

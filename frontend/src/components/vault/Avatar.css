@@ -8,9 +8,8 @@
 }
 
 .sb-avatar--img {
-  background: var(--bg-elevated);
-  padding: 4px;
-  object-fit: contain;
+  object-fit: cover;
+  background: var(--bg-elevated);   /* 투명 SVG 폴백용 */
 }
 
 .sb-avatar--text {

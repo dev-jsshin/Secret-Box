@@ -15,7 +15,8 @@ import {
   type ServiceCatalogItem,
 } from '../api/catalog';
 import { vaultApi } from '../api/vault';
-import { ApiError, setAccessToken } from '../api/client';
+import { ApiError, getRefreshToken, setAccessToken, setRefreshToken } from '../api/client';
+import { authApi } from '../api/auth';
 import { base64ToBytes } from '../crypto/base64';
 import { decryptJson } from '../crypto/cipher';
 import { useSessionStore } from '../store/session';
@@ -121,9 +122,14 @@ export default function Vault() {
     },
   });
 
-  function handleLogout() {
+  async function handleLogout() {
+    const rt = getRefreshToken();
+    if (rt) {
+      try { await authApi.logout(rt); } catch { /* 서버 폐기 실패해도 로컬은 정리 */ }
+    }
     clear();
     setAccessToken(null);
+    setRefreshToken(null);
     navigate('/login', { replace: true });
   }
 

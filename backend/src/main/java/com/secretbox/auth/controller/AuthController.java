@@ -2,11 +2,15 @@ package com.secretbox.auth.controller;
 
 import com.secretbox.auth.dto.LoginRequest;
 import com.secretbox.auth.dto.LoginResponse;
+import com.secretbox.auth.dto.LogoutRequest;
 import com.secretbox.auth.dto.PreLoginRequest;
 import com.secretbox.auth.dto.PreLoginResponse;
+import com.secretbox.auth.dto.RefreshRequest;
+import com.secretbox.auth.dto.RefreshResponse;
 import com.secretbox.auth.dto.RegisterRequest;
 import com.secretbox.auth.dto.RegisterResponse;
 import com.secretbox.auth.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -35,7 +39,37 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ResponseEntity.ok(authService.login(request));
+    public ResponseEntity<LoginResponse> login(
+        @Valid @RequestBody LoginRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(
+            authService.login(request, httpRequest.getHeader("User-Agent"), clientIp(httpRequest))
+        );
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<RefreshResponse> refresh(
+        @Valid @RequestBody RefreshRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(
+            authService.refresh(request.refreshToken(),
+                httpRequest.getHeader("User-Agent"), clientIp(httpRequest))
+        );
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+        authService.logout(request.refreshToken());
+        return ResponseEntity.noContent().build();
+    }
+
+    private static String clientIp(HttpServletRequest req) {
+        String xff = req.getHeader("X-Forwarded-For");
+        if (xff != null && !xff.isBlank()) {
+            return xff.split(",")[0].trim();
+        }
+        return req.getRemoteAddr();
     }
 }

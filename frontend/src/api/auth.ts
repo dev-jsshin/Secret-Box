@@ -7,15 +7,17 @@ export interface PreLoginResponse {
   kdfParallelism: number;
 }
 
-/**
- * v1: 2FA 미구현 → 로그인 응답에 access token + protected DEK 직접 포함.
- * v2 추가 예정: 2FA enabled 사용자는 { twoFactorRequired: true, twoFactorToken } 반환.
- */
 export interface LoginResponse {
   accessToken: string;
+  refreshToken: string;
   protectedDek: string;       // base64
   protectedDekIv: string;     // base64
   user: { id: string; email: string };
+}
+
+export interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;       // 회전된 새 토큰
 }
 
 export interface RegisterRequest {
@@ -48,4 +50,19 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify({ email, authHash }),
     }),
+
+  refresh: (refreshToken: string) =>
+    apiFetch<RefreshResponse>('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+      // refresh 자체에선 자동 재시도 비활성화 (무한 루프 방지)
+      _skipAuthRefresh: true,
+    } as RequestInit),
+
+  logout: (refreshToken: string) =>
+    apiFetch<void>('/auth/logout', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+      _skipAuthRefresh: true,
+    } as RequestInit),
 };
