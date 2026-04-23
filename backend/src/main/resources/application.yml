@@ -22,17 +22,7 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
-  mail:
-    host: ${SMTP_HOST}
-    port: ${SMTP_PORT}
-    username: ${SMTP_USERNAME}
-    password: ${SMTP_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+  # mail 설정은 spring-boot-starter-mail 활성화 시 다시 추가 (2FA 이메일 구현 단계)
 
 server:
   port: 6333
@@ -45,8 +35,7 @@ app:
     secret: ${JWT_SECRET}
     access-ttl-minutes: 15
     refresh-ttl-days: 30
-  mail:
-    from: ${SMTP_FROM}
+  # mail.from은 메일 기능 추가 시 활성화
   security:
     kdf:
       min-iterations: 3
