@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:6333/api/v1';
+// 기본값은 상대 경로. Vite dev server(또는 프로덕션 리버스 프록시)가 /api를 백엔드로 중계.
+// 다른 PC에서 접속해도 브라우저 입장에서 same-origin이라 CORS/호스트 문제가 없다.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 export interface ApiErrorBody {
   error: { code: string; message: string };

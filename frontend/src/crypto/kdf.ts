@@ -38,12 +38,12 @@ export async function deriveAuthHash(kek: Uint8Array, password: string): Promise
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    kek,
+    kek as BufferSource,
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign']
   );
-  const sig = await crypto.subtle.sign('HMAC', keyMaterial, enc.encode(password));
+  const sig = await crypto.subtle.sign('HMAC', keyMaterial, enc.encode(password) as BufferSource);
   return new Uint8Array(sig);
 }
 

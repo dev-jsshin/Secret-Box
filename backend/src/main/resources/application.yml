@@ -25,7 +25,8 @@ spring:
   # mail 설정은 spring-boot-starter-mail 활성화 시 다시 추가 (2FA 이메일 구현 단계)
 
 server:
-  port: 6333
+  # 포트는 SERVER_PORT 환경변수로 오버라이드 가능 (기본 6333)
+  port: ${SERVER_PORT}
   error:
     include-message: never
     include-stacktrace: never
@@ -33,14 +34,23 @@ server:
 app:
   jwt:
     secret: ${JWT_SECRET}
-    access-ttl-minutes: 15
-    refresh-ttl-days: 30
+    access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES}
+    refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS}
+
   # mail.from은 메일 기능 추가 시 활성화
+
   security:
     kdf:
+      # 클라이언트가 보내는 KDF 파라미터의 최소 허용치
       min-iterations: 3
       min-memory-kb: 65536
       min-parallelism: 4
+
+  cors:
+    # 허용 Origin 패턴 (콤마 구분).
+    # 값은 env (APP_CORS_ALLOWED_ORIGIN_PATTERNS)에서 주입.
+    # 운영 배포 시엔 사설 IP 대역 빼고 실제 도메인만 지정.
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS}
 
 logging:
   level:

@@ -1,0 +1,65 @@
+.sb-button {
+  position: relative;
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1.2rem;
+  background: var(--amber);
+  color: #1A1108;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 240ms var(--ease), box-shadow 240ms var(--ease),
+              background 240ms var(--ease);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 12px 30px -16px rgba(212, 146, 74, 0.55);
+}
+
+.sb-button:hover:not(:disabled) {
+  background: var(--amber-glow);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 2px 0 rgba(0, 0, 0, 0.4),
+    0 18px 40px -16px rgba(229, 176, 105, 0.7);
+}
+
+.sb-button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.sb-button:disabled {
+  cursor: not-allowed;
+  background: rgba(212, 146, 74, 0.18);
+  color: rgba(232, 226, 207, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(232, 226, 207, 0.08);
+}
+
+.sb-button.is-loading {
+  background-image: linear-gradient(
+    90deg,
+    var(--amber) 0%,
+    var(--amber-glow) 50%,
+    var(--amber) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  color: rgba(26, 17, 8, 0.85);
+}
+
+.sb-button__arrow {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  transition: transform 240ms var(--ease);
+}
+
+.sb-button:hover:not(:disabled) .sb-button__arrow {
+  transform: translateX(4px);
+}

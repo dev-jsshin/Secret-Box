@@ -12,12 +12,16 @@ export async function encrypt(key: Uint8Array, plaintext: Uint8Array): Promise<E
   const iv = randomBytes(12);
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    key as BufferSource,
     { name: 'AES-GCM' },
     false,
     ['encrypt']
   );
-  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, plaintext);
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: iv as BufferSource },
+    cryptoKey,
+    plaintext as BufferSource
+  );
   return { ciphertext: new Uint8Array(ct), iv };
 }
 
@@ -28,12 +32,16 @@ export async function decrypt(
 ): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    key as BufferSource,
     { name: 'AES-GCM' },
     false,
     ['decrypt']
   );
-  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, cryptoKey, ciphertext);
+  const pt = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: iv as BufferSource },
+    cryptoKey,
+    ciphertext as BufferSource
+  );
   return new Uint8Array(pt);
 }
 

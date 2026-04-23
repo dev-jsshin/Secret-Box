@@ -31,6 +31,9 @@ backend/out/
 backend/bin/
 *.class
 
+# TypeScript build cache
+*.tsbuildinfo
+
 # Docker volumes
 postgres-data/
 
