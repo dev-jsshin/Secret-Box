@@ -113,15 +113,24 @@ export default function Login() {
       const result = await authApi.login(email, bytesToBase64(authHash));
 
       // 4) protectedDek을 KEK로 풀어서 DEK 복구 (브라우저 안에서만)
-      const dek = await decrypt(
-        kek,
-        base64ToBytes(result.protectedDek),
-        base64ToBytes(result.protectedDekIv),
-      );
+      const protectedDek = base64ToBytes(result.protectedDek);
+      const protectedDekIv = base64ToBytes(result.protectedDekIv);
+      const dek = await decrypt(kek, protectedDek, protectedDekIv);
 
-      return { result, dek };
+      return {
+        result,
+        dek,
+        protectedDek,
+        protectedDekIv,
+        kdfSalt: kdfParams.salt,
+        derivedKdf: {
+          iterations: kdfParams.iterations,
+          memoryKb: kdfParams.memoryKb,
+          parallelism: kdfParams.parallelism,
+        },
+      };
     },
-    onSuccess: ({ result, dek }) => {
+    onSuccess: ({ result, dek, protectedDek, protectedDekIv, kdfSalt, derivedKdf }) => {
       setAccessToken(result.accessToken);
       setRefreshToken(result.refreshToken);
       setSession({
@@ -129,6 +138,12 @@ export default function Login() {
         email: result.user.email,
         accessToken: result.accessToken,
         dek,
+        unlock: {
+          protectedDek,
+          protectedDekIv,
+          kdfSalt,
+          kdfParams: derivedKdf,
+        },
       });
       navigate('/vault');
     },

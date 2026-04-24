@@ -11,11 +11,12 @@ import { scorePassword } from '../lib/passwordTools';
 
 import { authApi } from '../api/auth';
 import { usersApi } from '../api/users';
-import { ApiError, setAccessToken, setRefreshToken } from '../api/client';
+import { ApiError, getRefreshToken, setAccessToken, setRefreshToken } from '../api/client';
 import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
 import { encrypt } from '../crypto/cipher';
 import { DEFAULT_KDF_PARAMS, deriveAuthHash, deriveKek, randomBytes } from '../crypto/kdf';
 import { useSessionStore } from '../store/session';
+import { LOCK_OPTIONS, useLockSettings } from '../store/lockSettings';
 
 import './Settings.css';
 
@@ -30,8 +31,25 @@ export default function Settings() {
   const navigate = useNavigate();
   const dek = useSessionStore((s) => s.dek);
   const email = useSessionStore((s) => s.email);
+  const unlockMaterial = useSessionStore((s) => s.unlockMaterial);
   const setSession = useSessionStore((s) => s.setSession);
+  const clear = useSessionStore((s) => s.clear);
   const sessionUserId = useSessionStore((s) => s.userId);
+
+  const lock = useSessionStore((s) => s.lock);
+  const lockTimeoutMs = useLockSettings((s) => s.timeoutMs);
+  const setLockTimeoutMs = useLockSettings((s) => s.setTimeoutMs);
+
+  async function handleLogout() {
+    const rt = getRefreshToken();
+    if (rt) {
+      try { await authApi.logout(rt); } catch { /* 서버 폐기 실패해도 로컬은 정리 */ }
+    }
+    clear();
+    setAccessToken(null);
+    setRefreshToken(null);
+    navigate('/login', { replace: true });
+  }
 
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -44,8 +62,9 @@ export default function Settings() {
 
   const strength = useMemo(() => scorePassword(newPassword), [newPassword]);
 
-  // DEK 없으면 로그인으로
-  if (!dek || !email) {
+  // DEK도 unlockMaterial도 없으면 완전 로그아웃 상태 → 로그인으로
+  // (잠금 상태일 땐 LockScreen이 위에 떠 있으므로 페이지 자체는 유지)
+  if (!email || (!dek && !unlockMaterial)) {
     navigate('/login', { replace: true });
     return null;
   }
@@ -107,7 +126,7 @@ export default function Settings() {
       const newProtected = await encrypt(newKek, dek);
 
       // 5) 서버 호출
-      return usersApi.changePassword({
+      const apiResult = await usersApi.changePassword({
         oldAuthHash: bytesToBase64(oldAuthHash),
         newAuthHash: bytesToBase64(newAuthHash),
         newKdfSalt: bytesToBase64(newSalt),
@@ -117,21 +136,32 @@ export default function Settings() {
         newProtectedDek: bytesToBase64(newProtected.ciphertext),
         newProtectedDekIv: bytesToBase64(newProtected.iv),
       });
+      return {
+        apiResult,
+        newProtected,
+        newSalt,
+      };
     },
-    onSuccess: (result) => {
+    onSuccess: ({ apiResult, newProtected, newSalt }) => {
       // 토큰 갱신 (모든 다른 세션은 폐기됨)
-      setAccessToken(result.accessToken);
-      setRefreshToken(result.refreshToken);
+      setAccessToken(apiResult.accessToken);
+      setRefreshToken(apiResult.refreshToken);
       setSession({
         userId: sessionUserId ?? '',
         email: email ?? '',
-        accessToken: result.accessToken,
-        dek,
+        accessToken: apiResult.accessToken,
+        dek: dek!,
+        unlock: {
+          protectedDek: newProtected.ciphertext,
+          protectedDekIv: newProtected.iv,
+          kdfSalt: newSalt,
+          kdfParams: { ...DEFAULT_KDF_PARAMS },
+        },
       });
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setSuccess(result.message);
+      setSuccess(apiResult.message);
     },
     onError: (error) => {
       if (error instanceof ApiError && error.code === 'INVALID_OLD_PASSWORD') {
@@ -152,20 +182,33 @@ export default function Settings() {
   }
 
   return (
-    <div className="page">
+    <div className="page page--vault">
       <main className="settings">
-        <header className="settings__head rise delay-1">
-          <Link to="/vault" className="settings__back">
-            ← 보관함으로
-          </Link>
-          <Logo size={26} />
+        <header className="settings__head">
+          <div className="settings__topStrip rise delay-1">
+            <div className="settings__brand">
+              <Logo size={28} />
+              <span className="settings__wordmark">SecretBox</span>
+            </div>
+            <div className="settings__user">
+              <span className="settings__email">{email}</span>
+              <Link to="/vault" className="settings__userBtn settings__userBtn--primary">
+                <BackArrowIcon />
+                보관함
+              </Link>
+              <button type="button" className="settings__userBtn" onClick={handleLogout}>
+                로그아웃
+              </button>
+            </div>
+          </div>
+
+          <section className="settings__intro rise delay-2">
+            <h1 className="settings__title">설정</h1>
+            <p className="settings__sub">계정과 보관함 비밀번호</p>
+          </section>
         </header>
 
-        <section className="settings__intro rise delay-2">
-          <h1 className="serif-display settings__title">설정</h1>
-          <p className="settings__sub">계정과 보안 설정</p>
-        </section>
-
+        <section className="settings__content">
         {/* 계정 정보 */}
         <section className="settings__card rise delay-3">
           <h2 className="settings__cardTitle">계정</h2>
@@ -177,13 +220,46 @@ export default function Settings() {
           </dl>
         </section>
 
-        {/* 마스터 비밀번호 변경 */}
+        {/* 자동 잠금 */}
         <section className="settings__card rise delay-4">
-          <h2 className="settings__cardTitle">마스터 비밀번호 변경</h2>
-          <p className="settings__cardLede">
-            저장된 항목은 <strong>재암호화되지 않습니다</strong>.
-            새 비밀번호로 데이터 키만 다시 감쌉니다. 다른 기기는 모두 로그아웃됩니다.
-          </p>
+          <h2 className="settings__cardTitle">자동 잠금</h2>
+          <div className="settings__notice">
+            <ClockIcon />
+            <span>일정 시간 활동이 없으면 보관함이 자동으로 잠깁니다. 다시 열려면 마스터 비밀번호만 입력하면 돼요.</span>
+          </div>
+          <div className="settings__lockOptions">
+            {LOCK_OPTIONS.map((opt) => {
+              const isActive = lockTimeoutMs === opt.ms;
+              return (
+                <button
+                  key={opt.label}
+                  type="button"
+                  className={'settings__lockOpt' + (isActive ? ' is-active' : '')}
+                  onClick={() => setLockTimeoutMs(opt.ms)}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="settings__lockNow"
+            onClick={() => lock()}
+          >
+            <LockIcon />
+            <span>지금 잠그기</span>
+          </button>
+        </section>
+
+        {/* 보관함 비밀번호 변경 */}
+        <section className="settings__card rise delay-5">
+          <h2 className="settings__cardTitle">보관함 비밀번호 변경</h2>
+
+          <div className="settings__notice">
+            <LockIcon />
+            <span>비밀번호를 바꿔도 저장된 암호는 그대로 사용할 수 있어요.</span>
+          </div>
 
           {success && (
             <p className="settings__successBox">
@@ -227,17 +303,35 @@ export default function Settings() {
               error={confirmError}
             />
 
+            <div className="settings__noticeWarn">
+              <AlertIcon />
+              <span>다른 기기에 로그인되어 있다면 모두 로그아웃됩니다.</span>
+            </div>
+
             <div className="settings__actions">
               <Button
                 type="submit"
                 loading={mutation.isPending}
-                loadingLabel="암호화 처리 중…"
+                loadingLabel="처리 중…"
               >
                 비밀번호 변경
               </Button>
             </div>
           </form>
         </section>
+        </section>
+
+        <footer className="settings__foot">
+          <p className="settings__system">
+            ARGON2ID&nbsp;·&nbsp;HMAC-SHA256&nbsp;·&nbsp;AES-256-GCM&nbsp;·&nbsp;CLIENT-SIDE
+          </p>
+          <p className="settings__credit">
+            Crafted by{' '}
+            <span className="settings__creditName">dev-jsshin</span>
+            {' '}·{' '}
+            <span className="settings__creditName">신준섭</span>
+          </p>
+        </footer>
       </main>
 
       <AlertModal
@@ -248,5 +342,50 @@ export default function Settings() {
         message={errorAlert?.message}
       />
     </div>
+  );
+}
+
+function BackArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+         stroke="currentColor" strokeWidth="1.8"
+         strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 16 14" />
+    </svg>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+      <line x1="12" y1="9" x2="12" y2="13" />
+      <line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
   );
 }

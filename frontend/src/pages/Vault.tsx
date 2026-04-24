@@ -39,6 +39,7 @@ export default function Vault() {
   const queryClient = useQueryClient();
   const dek = useSessionStore((s) => s.dek);
   const email = useSessionStore((s) => s.email);
+  const unlockMaterial = useSessionStore((s) => s.unlockMaterial);
   const clear = useSessionStore((s) => s.clear);
 
   const [search, setSearch] = useState('');
@@ -50,10 +51,10 @@ export default function Vault() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
-  // DEK 없으면 (새로고침 등) 로그인으로
+  // DEK 없으면 (새로고침 등) 로그인으로 — 단, unlockMaterial이 있으면 잠금 상태이므로 LockScreen이 처리
   useEffect(() => {
-    if (!dek) navigate('/login', { replace: true });
-  }, [dek, navigate]);
+    if (!dek && !unlockMaterial) navigate('/login', { replace: true });
+  }, [dek, unlockMaterial, navigate]);
 
   // 카탈로그 (아이콘 매핑용)
   const { data: catalog } = useQuery({
@@ -183,7 +184,7 @@ export default function Vault() {
     navigate('/login', { replace: true });
   }
 
-  if (!dek) return null;
+  if (!dek && !unlockMaterial) return null;
 
   return (
     <div className="page page--vault">
@@ -318,10 +319,6 @@ export default function Vault() {
               const cat = item.plaintext.catalogSlug
                 ? catalogMap.get(item.plaintext.catalogSlug)
                 : undefined;
-              const displayName = item.plaintext.alias || item.plaintext.name;
-              const subName = item.plaintext.alias
-                ? (cat?.name || item.plaintext.name)
-                : null;
               const isCopied = copiedId === item.id;
               return (
                 <li key={item.id} className="vault__card">
@@ -337,12 +334,12 @@ export default function Vault() {
                       size={36}
                     />
                     <div className="vault__cardInfo">
-                      <span className="vault__cardName">{displayName}</span>
+                      <span className="vault__cardName">{item.plaintext.name}</span>
                       <span className="vault__cardUser">
-                        {subName && (
-                          <span className="vault__cardSubname">{subName}</span>
+                        {item.plaintext.alias && (
+                          <span className="vault__cardSubname">{item.plaintext.alias}</span>
                         )}
-                        {subName && item.plaintext.username && ' · '}
+                        {item.plaintext.alias && item.plaintext.username && ' · '}
                         {item.plaintext.username}
                       </span>
                     </div>
@@ -388,7 +385,7 @@ export default function Vault() {
                       type="button"
                       className="vault__cardAction vault__cardAction--danger"
                       onClick={() =>
-                        setConfirmDelete({ id: item.id, label: displayName })
+                        setConfirmDelete({ id: item.id, label: item.plaintext.name })
                       }
                       title="삭제"
                       aria-label="삭제"

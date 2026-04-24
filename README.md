@@ -168,45 +168,61 @@ lsof -ti:7444 | xargs kill
 cd frontend && npm run dev
 ```
 
+## 주요 기능
+
+- **항목 CRUD** — 카탈로그 기반 등록 (Naver, Google, Kakao 등 30+ 브랜드 자동 매칭). 별칭으로 같은 서비스의 여러 계정 구분 (회사/개인 등).
+- **변경 이력** — 각 항목의 필드별 변경 내역 조회 (읽기 전용 diff).
+- **마스터 비밀번호 변경** — 새 KEK로 DEK만 다시 감싸므로 항목 재암호화 불필요. 변경 시 다른 모든 세션 강제 로그아웃.
+- **자동 잠금** — 일정 시간 idle 시 메모리의 DEK 폐기 → 잠금 화면. 마스터 비번 입력만으로 풀림 (서버 호출 없음). 5/15/30분/안 함 설정 + "지금 잠그기".
+- **Refresh token 회전** — 30일 유지, 사용 시마다 새 토큰 발급 + 이전 토큰 폐기 (재사용 감지).
+
 ## 디렉토리 구조
 
 ```
 .
 ├── backend/                  Spring Boot 3 + Java 21 (IDE 실행)
-│   ├── .env.example          백엔드 환경변수 템플릿
+│   ├── .env.example
 │   └── src/main/
 │       ├── java/com/secretbox/
-│       │   ├── auth/         회원가입/로그인 (DTO, 서비스, 컨트롤러)
-│       │   ├── user/         User 엔티티 + 레포
+│       │   ├── auth/         회원가입/로그인/refresh, JWT, 세션
+│       │   ├── user/         User + 마스터 비번 변경
 │       │   ├── vault/        VaultItem + VaultItemHistory
-│       │   ├── config/       SecurityConfig, CorsConfig
-│       │   └── common/       전역 예외, ApiError 등
+│       │   ├── catalog/      서비스 카탈로그 (브랜드 메타)
+│       │   ├── config/       Security, CORS
+│       │   └── common/       전역 예외, ApiError
 │       └── resources/
 │           ├── application.yml
-│           └── db/migration/  Flyway SQL
-├── frontend/                 React 18 + Vite + TS (npm run dev)
-│   ├── .env.example          프론트 환경변수 템플릿
+│           └── db/migration/  Flyway SQL (V1~V4)
+├── frontend/                 React 18 + Vite + TS
+│   ├── .env.example
 │   └── src/
-│       ├── pages/            Register, Login
-│       ├── components/       Logo, FormField, Modal, AlertModal 등
+│       ├── pages/            Register, Login, Vault, Settings
+│       ├── components/       Logo, FormField, Modal, AlertModal,
+│       │   │                 LockScreen, SecurityExplainer
+│       │   └── vault/        Avatar, AddEditItemModal,
+│       │                     ItemHistoryModal, CatalogPicker
+│       ├── hooks/            useIdleLock
 │       ├── crypto/           Argon2 + AES-GCM + base64
-│       ├── api/              client, auth, vault
-│       └── store/            zustand 세션 (DEK는 메모리에만)
+│       ├── api/              client (refresh 자동 회전), auth, users,
+│       │                     vault, catalog
+│       └── store/            zustand — session (DEK 메모리만),
+│                             lockSettings (자동 잠금 설정)
 ├── docs/
 │   └── architecture.md       보안 모델 + API 스펙 상세
 ├── docker-compose.yml        Postgres만 실행
-└── .env.example              Postgres 변수 템플릿
+└── .env.example
 ```
 
 ## 개발 상태
 
-v1 진행 중 (회원가입까지 완료):
-- ✅ Zero-knowledge architecture (KEK/DEK)
-- ✅ 회원가입 (UI + API + 클라/서버 양쪽 Argon2)
-- ⬜ 로그인 (Pre-login + 패스워드 검증 + 2FA 이메일)
-- ⬜ 비밀번호 항목 CRUD
-- ⬜ 변경 기록 / 롤백
-- ⬜ 세션 관리
+- ✅ Zero-knowledge architecture (KEK/DEK, Argon2id + AES-256-GCM)
+- ✅ 회원가입 / 로그인 (refresh token 회전 포함)
+- ✅ 비밀번호 항목 CRUD (카탈로그 기반)
+- ✅ 항목별 변경 이력
+- ✅ 마스터 비밀번호 변경 (다른 세션 강제 로그아웃)
+- ✅ 자동 잠금 + 잠금 화면 (서버 호출 없는 클라이언트 단독 unlock)
+- ⬜ 활성 세션 목록 (다른 기기 강제 로그아웃 UI)
+- ⬜ Rate limit 및 운영 배포 준비
 
 ## Credits
 

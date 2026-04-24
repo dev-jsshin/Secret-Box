@@ -4,9 +4,11 @@ import Register from './pages/Register';
 import Login from './pages/Login';
 import Vault from './pages/Vault';
 import Settings from './pages/Settings';
+import LockScreen from './components/LockScreen';
 
 import { setSessionExpiredHandler } from './api/client';
 import { useSessionStore } from './store/session';
+import { useIdleLock } from './hooks/useIdleLock';
 
 function SessionExpiryBridge() {
   const clear = useSessionStore((s) => s.clear);
@@ -21,10 +23,16 @@ function SessionExpiryBridge() {
   return null;
 }
 
+function IdleLockBridge() {
+  useIdleLock();
+  return null;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <SessionExpiryBridge />
+      <IdleLockBridge />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
@@ -33,6 +41,7 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      <LockScreen />
     </BrowserRouter>
   );
 }
