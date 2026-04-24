@@ -44,7 +44,10 @@ public class AuthController {
         HttpServletRequest httpRequest
     ) {
         return ResponseEntity.ok(
-            authService.login(request, httpRequest.getHeader("User-Agent"), clientIp(httpRequest))
+            authService.login(request,
+                httpRequest.getHeader("User-Agent"),
+                clientIp(httpRequest),
+                httpRequest.getHeader("X-Device-Id"))
         );
     }
 

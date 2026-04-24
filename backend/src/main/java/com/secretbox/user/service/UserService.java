@@ -4,9 +4,12 @@ import com.secretbox.auth.repository.SessionRepository;
 import com.secretbox.auth.service.JwtService;
 import com.secretbox.auth.service.RefreshTokenService;
 import com.secretbox.common.exception.ApiException;
+import com.secretbox.auth.domain.Session;
 import com.secretbox.user.domain.User;
 import com.secretbox.user.dto.ChangePasswordRequest;
 import com.secretbox.user.dto.ChangePasswordResponse;
+import com.secretbox.user.dto.SessionListItem;
+import com.secretbox.user.dto.SessionListResponse;
 import com.secretbox.user.repository.UserRepository;
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
@@ -19,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Base64;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -56,7 +60,8 @@ public class UserService {
         UUID userId,
         ChangePasswordRequest req,
         String userAgent,
-        String ipAddress
+        String ipAddress,
+        String deviceId
     ) {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED,
@@ -105,10 +110,71 @@ public class UserService {
 
         // 6) 현재 요청을 위한 새 access + refresh 발급
         String accessToken = jwtService.issueAccessToken(userId, user.getEmail());
-        String refreshToken = refreshTokenService.issue(userId, userAgent, ipAddress);
+        String refreshToken = refreshTokenService.issue(userId, userAgent, ipAddress, deviceId);
 
         return new ChangePasswordResponse(accessToken, refreshToken,
             "마스터 비밀번호가 변경되었습니다. 다른 기기는 모두 로그아웃됐어요.");
+    }
+
+    /**
+     * 활성 세션 목록 조회. currentRawRefreshToken이 있으면 매칭되는 세션은 current=true로 표시한다.
+     */
+    public SessionListResponse listSessions(UUID userId, String currentRawRefreshToken) {
+        String currentHash = currentRawRefreshToken != null && !currentRawRefreshToken.isBlank()
+            ? refreshTokenService.hashOf(currentRawRefreshToken)
+            : null;
+
+        List<SessionListItem> items = sessionRepository
+            .findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(userId).stream()
+            .map(s -> new SessionListItem(
+                s.getId().toString(),
+                s.getUserAgent(),
+                s.getIpAddress(),
+                s.getCreatedAt(),
+                s.getLastSeenAt(),
+                s.getExpiresAt(),
+                currentHash != null && currentHash.equals(s.getRefreshTokenHash())
+            ))
+            .toList();
+
+        return new SessionListResponse(items);
+    }
+
+    /** 특정 세션 폐기. 본인 소유가 아니면 403. */
+    @Transactional
+    public void revokeSession(UUID userId, UUID sessionId) {
+        Session session = sessionRepository.findById(sessionId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "SESSION_NOT_FOUND",
+                "세션을 찾을 수 없습니다"));
+
+        if (!session.getUserId().equals(userId)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "FORBIDDEN",
+                "본인 세션이 아닙니다");
+        }
+
+        if (session.getRevokedAt() == null) {
+            session.setRevokedAt(Instant.now());
+            log.info("Session revoked: user={}, session={}", userId, sessionId);
+        }
+    }
+
+    /** 현재 세션을 제외한 모든 활성 세션 폐기. */
+    @Transactional
+    public int revokeOtherSessions(UUID userId, String currentRawRefreshToken) {
+        String currentHash = refreshTokenService.hashOf(currentRawRefreshToken);
+        List<Session> sessions = sessionRepository
+            .findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(userId);
+
+        Instant now = Instant.now();
+        int count = 0;
+        for (Session s : sessions) {
+            if (!currentHash.equals(s.getRefreshTokenHash())) {
+                s.setRevokedAt(now);
+                count++;
+            }
+        }
+        log.info("Other sessions revoked: user={}, count={}", userId, count);
+        return count;
     }
 
     private byte[] decodeBase64(String value, String fieldName) {

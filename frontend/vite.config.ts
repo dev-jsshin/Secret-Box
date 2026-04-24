@@ -30,6 +30,7 @@ export default defineConfig(({ mode }) => {
           target: backendOrigin,
           changeOrigin: true,
           secure: false,
+          xfwd: true,         // 원 client IP를 X-Forwarded-For 헤더로 전달
         },
       },
     },

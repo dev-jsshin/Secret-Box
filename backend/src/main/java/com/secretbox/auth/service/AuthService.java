@@ -143,7 +143,7 @@ public class AuthService {
     // ==========================================================
 
     @Transactional
-    public LoginResponse login(LoginRequest req, String userAgent, String ipAddress) {
+    public LoginResponse login(LoginRequest req, String userAgent, String ipAddress, String deviceId) {
         User user = userRepository.findByEmail(req.email())
             .orElseThrow(() -> invalidCredentials());
 
@@ -160,8 +160,8 @@ public class AuthService {
         }
 
         String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail());
-        String refreshToken = refreshTokenService.issue(user.getId(), userAgent, ipAddress);
-        log.info("User logged in: id={}, email={}", user.getId(), user.getEmail());
+        String refreshToken = refreshTokenService.issue(user.getId(), userAgent, ipAddress, deviceId);
+        log.info("User logged in: id={}, email={}, device={}", user.getId(), user.getEmail(), deviceId);
 
         return new LoginResponse(
             accessToken,

@@ -14,6 +14,8 @@ import java.util.UUID;
 public interface SessionRepository extends JpaRepository<Session, UUID> {
     Optional<Session> findByRefreshTokenHash(String refreshTokenHash);
     List<Session> findAllByUserIdAndRevokedAtIsNull(UUID userId);
+    List<Session> findByUserIdAndRevokedAtIsNullOrderByLastSeenAtDesc(UUID userId);
+    Optional<Session> findByUserIdAndDeviceIdAndRevokedAtIsNull(UUID userId, String deviceId);
 
     @Modifying
     @Query("UPDATE Session s SET s.revokedAt = :now WHERE s.userId = :userId AND s.revokedAt IS NULL")

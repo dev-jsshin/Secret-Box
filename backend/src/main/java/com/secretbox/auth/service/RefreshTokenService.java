@@ -37,44 +37,66 @@ public class RefreshTokenService {
     @Value("${app.jwt.refresh-ttl-days}")
     private long refreshTtlDays;
 
-    /** 새 refresh token 발급 + sessions 테이블에 hash 저장. raw 토큰 반환 (한 번만). */
+    /**
+     * 새 refresh token 발급.
+     *   - deviceId가 있으면 같은 (userId, deviceId)의 기존 active 세션은 폐기 후 새로 만듦
+     *     → 같은 기기에서 재로그인 시 row 누적 방지.
+     *   - deviceId가 null이면 그냥 새 row.
+     */
     @Transactional
-    public String issue(UUID userId, String userAgent, String ipAddress) {
+    public String issue(UUID userId, String userAgent, String ipAddress, String deviceId) {
+        if (deviceId != null && !deviceId.isBlank()) {
+            sessionRepository.findByUserIdAndDeviceIdAndRevokedAtIsNull(userId, deviceId)
+                .ifPresent(existing -> existing.setRevokedAt(Instant.now()));
+        }
+
         String rawToken = generateRawToken();
         String hash = sha256(rawToken);
-
-        Instant expiresAt = Instant.now().plus(refreshTtlDays, ChronoUnit.DAYS);
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(refreshTtlDays, ChronoUnit.DAYS);
 
         sessionRepository.save(Session.builder()
             .userId(userId)
             .refreshTokenHash(hash)
             .userAgent(userAgent)
             .ipAddress(ipAddress)
+            .deviceId(deviceId)
+            .lastSeenAt(now)
             .expiresAt(expiresAt)
             .build());
 
         return rawToken;
     }
 
-    /** Refresh 회전: 기존 토큰 검증 + revoke + 새 토큰 발급. 새 raw 토큰 반환. */
+    /**
+     * Refresh 회전: 기존 row를 in-place로 업데이트 (해시 회전 + 만료 연장 + lastSeenAt 갱신).
+     * row가 유지되므로 createdAt = "이 기기 첫 로그인" 의미가 보존된다.
+     */
     @Transactional
     public RotatedSession rotate(String rawToken, String userAgent, String ipAddress) {
         Session session = findValid(rawToken);
 
-        // 회전: 기존 세션 revoke
-        session.setRevokedAt(Instant.now());
+        String newRaw = generateRawToken();
+        Instant now = Instant.now();
 
-        // 새 세션 발급
-        UUID userId = session.getUserId();
-        String newRaw = issue(userId, userAgent, ipAddress);
+        session.setRefreshTokenHash(sha256(newRaw));
+        session.setExpiresAt(now.plus(refreshTtlDays, ChronoUnit.DAYS));
+        session.setLastSeenAt(now);
+        if (userAgent != null) session.setUserAgent(userAgent);
+        if (ipAddress != null) session.setIpAddress(ipAddress);
 
-        return new RotatedSession(userId, newRaw);
+        return new RotatedSession(session.getUserId(), newRaw);
     }
 
     @Transactional
     public void revoke(String rawToken) {
         sessionRepository.findByRefreshTokenHash(sha256(rawToken))
             .ifPresent(session -> session.setRevokedAt(Instant.now()));
+    }
+
+    /** raw refresh token → 저장된 hash 형태로 변환 (세션 매칭용). */
+    public String hashOf(String rawToken) {
+        return sha256(rawToken);
     }
 
     private Session findValid(String rawToken) {

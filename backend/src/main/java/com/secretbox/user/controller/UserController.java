@@ -3,6 +3,9 @@ package com.secretbox.user.controller;
 import com.secretbox.auth.security.AuthenticatedUser;
 import com.secretbox.user.dto.ChangePasswordRequest;
 import com.secretbox.user.dto.ChangePasswordResponse;
+import com.secretbox.user.dto.RevokeOthersRequest;
+import com.secretbox.user.dto.RevokeOthersResponse;
+import com.secretbox.user.dto.SessionListResponse;
 import com.secretbox.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -10,10 +13,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -35,8 +42,38 @@ public class UserController {
     ) {
         return ResponseEntity.ok(
             userService.changePassword(user.userId(), request,
-                httpRequest.getHeader("User-Agent"), clientIp(httpRequest))
+                httpRequest.getHeader("User-Agent"),
+                clientIp(httpRequest),
+                httpRequest.getHeader("X-Device-Id"))
         );
+    }
+
+    @GetMapping("/me/sessions")
+    public ResponseEntity<SessionListResponse> listSessions(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @RequestHeader(value = "X-Current-Refresh", required = false) String currentRefreshToken
+    ) {
+        return ResponseEntity.ok(
+            userService.listSessions(user.userId(), currentRefreshToken)
+        );
+    }
+
+    @PostMapping("/me/sessions/{sessionId}/revoke")
+    public ResponseEntity<Void> revokeSession(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @PathVariable UUID sessionId
+    ) {
+        userService.revokeSession(user.userId(), sessionId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/me/sessions/revoke-others")
+    public ResponseEntity<RevokeOthersResponse> revokeOtherSessions(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @Valid @RequestBody RevokeOthersRequest request
+    ) {
+        int revoked = userService.revokeOtherSessions(user.userId(), request.currentRefreshToken());
+        return ResponseEntity.ok(new RevokeOthersResponse(revoked));
     }
 
     public record MeResponse(String id, String email) {}

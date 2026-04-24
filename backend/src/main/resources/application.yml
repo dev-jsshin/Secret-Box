@@ -34,6 +34,8 @@ server:
 app:
   jwt:
     secret: ${JWT_SECRET}
+    # access TTL이 짧을수록 세션 폐기가 더 빨리 체감된다 (revoke된 세션이
+    # 들고있는 JWT가 만료될 때까지의 최대 딜레이). 폐기 즉시성을 원하면 2-3분 권장.
     access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES}
     refresh-ttl-days: ${JWT_REFRESH_TTL_DAYS}
 

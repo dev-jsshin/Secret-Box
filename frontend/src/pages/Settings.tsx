@@ -1,6 +1,6 @@
 import { FormEvent, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
 import Button from '../components/Button';
@@ -40,6 +40,37 @@ export default function Settings() {
   const lockTimeoutMs = useLockSettings((s) => s.timeoutMs);
   const setLockTimeoutMs = useLockSettings((s) => s.setTimeoutMs);
 
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldError, setOldError] = useState('');
+  const [newError, setNewError] = useState('');
+  const [confirmError, setConfirmError] = useState('');
+  const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
+  const sessionsQuery = useQuery({
+    queryKey: ['user-sessions'],
+    queryFn: () => usersApi.listSessions(),
+  });
+  const revokeSessionMutation = useMutation({
+    mutationFn: (sessionId: string) => usersApi.revokeSession(sessionId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-sessions'] }),
+    onError: (e) => setErrorAlert({
+      title: '세션 끊기 실패',
+      message: e instanceof ApiError ? e.message : '잠시 후 다시 시도해주세요.',
+    }),
+  });
+  const revokeOthersMutation = useMutation({
+    mutationFn: () => usersApi.revokeOtherSessions(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-sessions'] }),
+    onError: (e) => setErrorAlert({
+      title: '세션 끊기 실패',
+      message: e instanceof ApiError ? e.message : '잠시 후 다시 시도해주세요.',
+    }),
+  });
+
   async function handleLogout() {
     const rt = getRefreshToken();
     if (rt) {
@@ -50,15 +81,6 @@ export default function Settings() {
     setRefreshToken(null);
     navigate('/login', { replace: true });
   }
-
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [oldError, setOldError] = useState('');
-  const [newError, setNewError] = useState('');
-  const [confirmError, setConfirmError] = useState('');
-  const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const strength = useMemo(() => scorePassword(newPassword), [newPassword]);
 
@@ -252,8 +274,66 @@ export default function Settings() {
           </button>
         </section>
 
-        {/* 보관함 비밀번호 변경 */}
+        {/* 활성 세션 */}
         <section className="settings__card rise delay-5">
+          <h2 className="settings__cardTitle">활성 세션</h2>
+          <div className="settings__notice">
+            <ShieldIcon />
+            <span>이 계정으로 로그인된 모든 기기 목록입니다. 의심스러운 항목이 있으면 끊으세요.</span>
+          </div>
+
+          {sessionsQuery.isPending && (
+            <p className="settings__sessionEmpty">불러오는 중…</p>
+          )}
+
+          {sessionsQuery.data && (
+            <ul className="settings__sessions">
+              {sessionsQuery.data.sessions.map((s) => (
+                <li
+                  key={s.id}
+                  className={'settings__session' + (s.current ? ' is-current' : '')}
+                >
+                  <div className="settings__sessionInfo">
+                    <div className="settings__sessionLabel">
+                      <span>{parseDevice(s.userAgent)}</span>
+                      {s.current && (
+                        <span className="settings__sessionBadge">현재 세션</span>
+                      )}
+                    </div>
+                    <div className="settings__sessionMeta">
+                      {formatIp(s.ipAddress)} · 마지막 활동 {formatRelativeDate(s.lastSeenAt)}
+                    </div>
+                  </div>
+                  {!s.current && (
+                    <button
+                      type="button"
+                      className="settings__sessionRevoke"
+                      onClick={() => revokeSessionMutation.mutate(s.id)}
+                      disabled={revokeSessionMutation.isPending}
+                    >
+                      끊기
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {sessionsQuery.data && sessionsQuery.data.sessions.some((s) => !s.current) && (
+            <button
+              type="button"
+              className="settings__lockNow"
+              onClick={() => revokeOthersMutation.mutate()}
+              disabled={revokeOthersMutation.isPending}
+            >
+              <PowerIcon />
+              <span>다른 모든 세션 끊기</span>
+            </button>
+          )}
+        </section>
+
+        {/* 보관함 비밀번호 변경 */}
+        <section className="settings__card rise delay-6">
           <h2 className="settings__cardTitle">보관함 비밀번호 변경</h2>
 
           <div className="settings__notice">
@@ -342,6 +422,72 @@ export default function Settings() {
         message={errorAlert?.message}
       />
     </div>
+  );
+}
+
+function formatIp(ip: string | null): string {
+  if (!ip || ip.length === 0) return '주소 없음';
+  // IPv6 loopback variants
+  if (ip === '::1' || ip === '0:0:0:0:0:0:0:1') return 'localhost';
+  if (ip === '127.0.0.1') return 'localhost';
+  // IPv4-mapped IPv6 (e.g., ::ffff:192.168.1.2)
+  if (ip.startsWith('::ffff:')) return ip.substring(7);
+  return ip;
+}
+
+function parseDevice(ua: string | null): string {
+  if (!ua) return '알 수 없는 기기';
+
+  let os = '기타';
+  if (/iPad/.test(ua)) os = 'iPad';
+  else if (/iPhone/.test(ua)) os = 'iPhone';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Windows NT/.test(ua)) os = 'Windows';
+  else if (/Linux/.test(ua)) os = 'Linux';
+
+  let browser = '브라우저';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Edg\//.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Safari\//.test(ua) && !/Chrome\//.test(ua)) browser = 'Safari';
+
+  return `${browser} · ${os}`;
+}
+
+function formatRelativeDate(iso: string): string {
+  const ts = Date.parse(iso);
+  if (!Number.isFinite(ts)) return iso;
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return '방금 전';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}분 전`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}시간 전`;
+  if (diff < 7 * 86_400_000) return `${Math.floor(diff / 86_400_000)}일 전`;
+  const d = new Date(ts);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}.${mm}.${dd}`;
+}
+
+function ShieldIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+    </svg>
+  );
+}
+
+function PowerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none"
+         stroke="currentColor" strokeWidth="1.7"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+      <line x1="12" y1="2" x2="12" y2="12" />
+    </svg>
   );
 }
 

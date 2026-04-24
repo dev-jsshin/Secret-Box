@@ -1,4 +1,5 @@
 import { apiFetch } from './client';
+import { getDeviceId } from '../lib/deviceId';
 
 export interface PreLoginResponse {
   kdfSalt: string;
@@ -48,6 +49,7 @@ export const authApi = {
   login: (email: string, authHash: string) =>
     apiFetch<LoginResponse>('/auth/login', {
       method: 'POST',
+      headers: { 'X-Device-Id': getDeviceId() },
       body: JSON.stringify({ email, authHash }),
     }),
 

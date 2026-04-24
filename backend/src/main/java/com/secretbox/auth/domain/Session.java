@@ -32,6 +32,12 @@ public class Session {
     @Column(name = "ip_address", length = 45)
     private String ipAddress;
 
+    @Column(name = "device_id", length = 64)
+    private String deviceId;
+
+    @Column(name = "last_seen_at")
+    private Instant lastSeenAt;
+
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
