@@ -407,8 +407,8 @@ export default function Settings() {
           </p>
           <p className="settings__credit">
             Crafted by{' '}
-            <span className="settings__creditName">dev-jsshin</span>
-            {' '}·{' '}
+            {/* <span className="settings__creditName">dev-jsshin</span>
+            {' '}·{' '} */}
             <span className="settings__creditName">신준섭</span>
           </p>
         </footer>

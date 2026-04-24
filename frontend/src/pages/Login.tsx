@@ -289,8 +289,8 @@ export default function Login() {
           </p>
           <p className="login__credit">
             Crafted by{' '}
-            <span className="login__creditName">dev-jsshin</span>
-            {' '}·{' '}
+            {/* <span className="login__creditName">dev-jsshin</span>
+            {' '}·{' '} */}
             <span className="login__creditName">신준섭</span>
           </p>
         </footer>

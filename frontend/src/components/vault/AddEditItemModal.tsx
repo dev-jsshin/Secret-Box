@@ -18,6 +18,7 @@ import { bytesToBase64 } from '../../crypto/base64';
 import { encryptJson } from '../../crypto/cipher';
 import { useSessionStore } from '../../store/session';
 import type { DecryptedVaultItem, VaultItemPlaintext } from '../../types/vault';
+import { isValidBase32, parseOtpAuthUri } from '../../lib/totp';
 
 import './AddEditItemModal.css';
 
@@ -55,6 +56,8 @@ export default function AddEditItemModal({
   const [password, setPassword] = useState('');
   const [url, setUrl] = useState('');
   const [notes, setNotes] = useState('');
+  const [totpSecret, setTotpSecret] = useState('');
+  const [totpError, setTotpError] = useState('');
 
   const { data: catalog } = useQuery({
     queryKey: ['catalog'],
@@ -86,6 +89,7 @@ export default function AddEditItemModal({
   useEffect(() => {
     if (!isOpen) return;
     setPickSearch('');
+    setTotpError('');
     if (initialItem) {
       const p = initialItem.plaintext;
       setName(p.name);
@@ -96,6 +100,7 @@ export default function AddEditItemModal({
       setPassword(p.password);
       setUrl(p.url ?? '');
       setNotes(p.notes ?? '');
+      setTotpSecret(p.totpSecret ?? '');
       setStep('form');
     } else {
       setName('');
@@ -106,9 +111,36 @@ export default function AddEditItemModal({
       setPassword('');
       setUrl('');
       setNotes('');
+      setTotpSecret('');
       setStep('pick');
     }
   }, [isOpen, initialItem]);
+
+  /**
+   * TOTP 입력 처리:
+   *   - otpauth:// URI를 붙여넣으면 secret만 추출해서 채움
+   *   - 그 외엔 raw base32로 취급, 즉시 검증
+   */
+  function handleTotpChange(value: string) {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('otpauth://')) {
+      const parsed = parseOtpAuthUri(trimmed);
+      if (parsed) {
+        setTotpSecret(parsed.secret);
+        setTotpError('');
+        return;
+      }
+      setTotpSecret(trimmed);
+      setTotpError('otpauth URL을 해석할 수 없습니다.');
+      return;
+    }
+    setTotpSecret(trimmed);
+    if (trimmed && !isValidBase32(trimmed)) {
+      setTotpError('base32 형식만 가능합니다 (A–Z, 2–7).');
+    } else {
+      setTotpError('');
+    }
+  }
 
   function handlePickService(item: ServiceCatalogItem) {
     setName(item.name);
@@ -129,6 +161,7 @@ export default function AddEditItemModal({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!dek) throw new Error('NO_DEK');
+      const cleanedTotp = totpSecret.trim().toUpperCase().replace(/[\s-]/g, '');
       const plaintext: VaultItemPlaintext = {
         name: name.trim(),
         alias: alias.trim() || undefined,
@@ -138,6 +171,7 @@ export default function AddEditItemModal({
         password,
         url: url.trim() || undefined,
         notes: notes.trim() || undefined,
+        totpSecret: cleanedTotp || undefined,
       };
       const { ciphertext, iv } = await encryptJson(dek, plaintext);
       const body = {
@@ -174,6 +208,10 @@ export default function AddEditItemModal({
     }
     if (!password) {
       onError?.('비밀번호를 입력해주세요.');
+      return;
+    }
+    if (totpError) {
+      onError?.('2FA secret 형식을 확인해주세요.');
       return;
     }
     mutation.mutate();
@@ -337,6 +375,23 @@ export default function AddEditItemModal({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             copyable
+          />
+
+          <FormField
+            id="ai-totp"
+            type="password"
+            label="2FA secret"
+            placeholder="otpauth:// URL 또는 base32 secret"
+            value={totpSecret}
+            onChange={(e) => handleTotpChange(e.target.value)}
+            error={totpError}
+            hint={
+              <>
+                2FA 등록 시 QR과 같이 표시되는 secret (Google/MS Authenticator 등 표준 TOTP 호환).
+                <br />
+                30초 회전 코드를 카드에 같이 보여줍니다.
+              </>
+            }
           />
 
           <FormField

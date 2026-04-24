@@ -203,6 +203,39 @@
   color: var(--ink-faint);
 }
 
+.vault__totpToggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--line-default);
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease), background 180ms var(--ease);
+}
+
+.vault__totpToggle:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.vault__totpToggle--hidden {
+  border-color: rgba(212, 146, 74, 0.5);
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
+}
+
+.vault__totpToggle svg {
+  flex-shrink: 0;
+}
+
 .vault__addBtn {
   flex: 0 0 auto;
   padding: 0.55rem 1rem;
@@ -382,6 +415,58 @@
   min-width: 0;
 }
 
+/* TOTP 회전 코드 표시 — 카드 행 안에서 액션 영역 직전에 위치 */
+.vault__totp {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.32rem 0.5rem 0.32rem 0.7rem;
+  margin: 0.5rem 0.35rem 0.5rem 0;
+  background: rgba(212, 146, 74, 0.06);
+  border: 1px solid rgba(212, 146, 74, 0.32);
+  border-radius: 999px;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition:
+    background 180ms var(--ease),
+    border-color 180ms var(--ease),
+    color 180ms var(--ease);
+}
+
+.vault__totp:hover {
+  background: rgba(212, 146, 74, 0.13);
+  border-color: var(--amber);
+}
+
+.vault__totp--copied {
+  background: rgba(132, 168, 126, 0.14);
+  border-color: rgba(132, 168, 126, 0.5);
+  color: var(--success);
+}
+
+.vault__totp--error {
+  background: rgba(201, 115, 115, 0.08);
+  border-color: rgba(201, 115, 115, 0.35);
+  color: var(--danger);
+  cursor: default;
+}
+
+.vault__totpRing {
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.vault__totpCode {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .vault__cardActions {
   display: flex;
   align-items: center;
@@ -414,12 +499,14 @@
   color: var(--danger);
 }
 
-.vault__cardAction--copied {
+.vault__cardAction--copied,
+.vault__cardAction--copiedUser {
   background: rgba(132, 168, 126, 0.14);
   color: var(--success);
 }
 
-.vault__cardAction--copied:hover {
+.vault__cardAction--copied:hover,
+.vault__cardAction--copiedUser:hover {
   background: rgba(132, 168, 126, 0.18);
   color: var(--success);
 }

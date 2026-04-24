@@ -7,6 +7,7 @@ import AlertModal from '../components/AlertModal';
 import Avatar from '../components/vault/Avatar';
 import AddEditItemModal from '../components/vault/AddEditItemModal';
 import ItemHistoryModal from '../components/vault/ItemHistoryModal';
+import TotpDisplay from '../components/vault/TotpDisplay';
 
 import {
   catalogApi,
@@ -49,6 +50,9 @@ export default function Vault() {
   const [historyOf, setHistoryOf] = useState<DecryptedVaultItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<ConfirmDelete | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [copiedTotpId, setCopiedTotpId] = useState<string | null>(null);
+  const [totpVisible, setTotpVisible] = useState(true);
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
   // DEK 없으면 (새로고침 등) 로그인으로 — 단, unlockMaterial이 있으면 잠금 상태이므로 LockScreen이 처리
@@ -130,6 +134,11 @@ export default function Vault() {
     return { total, breakdown };
   }, [items]);
 
+  const hasAnyTotp = useMemo(
+    () => items?.some((i) => !!i.plaintext.totpSecret) ?? false,
+    [items],
+  );
+
   const filtered = useMemo(() => {
     if (!items) return [];
     let list = items;
@@ -153,6 +162,37 @@ export default function Vault() {
       setCopiedId(item.id);
       setTimeout(() => {
         setCopiedId((cur) => (cur === item.id ? null : cur));
+      }, 1500);
+    } catch {
+      setErrorAlert({
+        title: '복사 실패',
+        message: '클립보드에 접근할 수 없습니다.',
+      });
+    }
+  }
+
+  async function handleCopyUsername(item: DecryptedVaultItem) {
+    if (!item.plaintext.username) return;
+    try {
+      await navigator.clipboard.writeText(item.plaintext.username);
+      setCopiedUserId(item.id);
+      setTimeout(() => {
+        setCopiedUserId((cur) => (cur === item.id ? null : cur));
+      }, 1500);
+    } catch {
+      setErrorAlert({
+        title: '복사 실패',
+        message: '클립보드에 접근할 수 없습니다.',
+      });
+    }
+  }
+
+  async function handleCopyTotp(itemId: string, code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedTotpId(itemId);
+      setTimeout(() => {
+        setCopiedTotpId((cur) => (cur === itemId ? null : cur));
       }, 1500);
     } catch {
       setErrorAlert({
@@ -272,6 +312,21 @@ export default function Vault() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="이름·아이디·카테고리로 검색"
           />
+          {hasAnyTotp && (
+            <button
+              type="button"
+              className={
+                'vault__totpToggle'
+                + (totpVisible ? '' : ' vault__totpToggle--hidden')
+              }
+              onClick={() => setTotpVisible((v) => !v)}
+              title={totpVisible ? 'TOTP 코드 가리기' : 'TOTP 코드 보이기'}
+              aria-pressed={!totpVisible}
+            >
+              {totpVisible ? <EyeIcon /> : <EyeOffIcon />}
+              <span>TOTP</span>
+            </button>
+          )}
           <button
             type="button"
             className="vault__addBtn"
@@ -347,6 +402,14 @@ export default function Vault() {
                       {CATEGORY_LABELS[item.plaintext.category]}
                     </span>
                   </button>
+                  {item.plaintext.totpSecret && (
+                    <TotpDisplay
+                      secret={item.plaintext.totpSecret}
+                      visible={totpVisible}
+                      isCopied={copiedTotpId === item.id}
+                      onCopy={(code) => handleCopyTotp(item.id, code)}
+                    />
+                  )}
                   <div className="vault__cardActions">
                     {item.plaintext.url && (
                       <a
@@ -360,6 +423,20 @@ export default function Vault() {
                         <ExternalLinkIcon />
                       </a>
                     )}
+                    {item.plaintext.username && (
+                      <button
+                        type="button"
+                        className={
+                          'vault__cardAction'
+                          + (copiedUserId === item.id ? ' vault__cardAction--copiedUser' : '')
+                        }
+                        onClick={() => handleCopyUsername(item)}
+                        title={copiedUserId === item.id ? '복사됨' : '아이디 복사'}
+                        aria-label="아이디 복사"
+                      >
+                        {copiedUserId === item.id ? <CheckIcon /> : <UserIcon />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className={
@@ -370,7 +447,7 @@ export default function Vault() {
                       title={isCopied ? '복사됨' : '암호 복사'}
                       aria-label="암호 복사"
                     >
-                      {isCopied ? <CheckIcon /> : <CopyIcon />}
+                      {isCopied ? <CheckIcon /> : <KeyIcon />}
                     </button>
                     <button
                       type="button"
@@ -405,8 +482,8 @@ export default function Vault() {
           </p>
           <p className="vault__credit">
             Crafted by{' '}
-            <span className="vault__creditName">dev-jsshin</span>
-            {' '}·{' '}
+            {/* <span className="vault__creditName">dev-jsshin</span>
+            {' '}·{' '} */}
             <span className="vault__creditName">신준섭</span>
           </p>
         </footer>
@@ -455,6 +532,30 @@ export default function Vault() {
 }
 
 // ---------- inline icons ----------
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a19.77 19.77 0 0 1 5.06-5.94" />
+      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 7 11 7a19.85 19.85 0 0 1-3.17 4.19" />
+      <path d="M14.12 14.12A3 3 0 1 1 9.88 9.88" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
 function ClockIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
@@ -466,13 +567,26 @@ function ClockIcon() {
   );
 }
 
-function CopyIcon() {
+function UserIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
          stroke="currentColor" strokeWidth="1.6"
          strokeLinecap="round" strokeLinejoin="round">
-      <rect x="9" y="9" width="12" height="12" rx="2" />
-      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 21v-1.5a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5V21" />
+    </svg>
+  );
+}
+
+function KeyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="15" r="4" />
+      <line x1="10.83" y1="12.17" x2="20" y2="3" />
+      <line x1="17" y1="6" x2="20" y2="9" />
+      <line x1="14" y1="9" x2="17" y2="12" />
     </svg>
   );
 }

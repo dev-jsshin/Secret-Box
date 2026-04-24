@@ -15,6 +15,7 @@ export interface VaultItemPlaintext {
   url?: string;
   notes?: string;
   favorite?: boolean;
+  totpSecret?: string;         // base32 — RFC 6238 TOTP secret (Google Authenticator 호환)
 }
 
 /**

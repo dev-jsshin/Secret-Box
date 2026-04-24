@@ -262,8 +262,8 @@ export default function Register() {
           </p>
           <p className="register__credit">
             Crafted by{' '}
-            <span className="register__creditName">dev-jsshin</span>
-            {' '}·{' '}
+            {/* <span className="register__creditName">dev-jsshin</span>
+            {' '}·{' '} */}
             <span className="register__creditName">신준섭</span>
           </p>
         </footer>
