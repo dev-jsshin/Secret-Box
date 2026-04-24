@@ -43,12 +43,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(BEARER_PREFIX.length());
             try {
                 Claims claims = jwtService.parse(token);
-                UUID userId = UUID.fromString(claims.getSubject());
-                String email = claims.get("email", String.class);
+                // purpose claim이 있는 토큰(2fa 중간 단계 등)은 일반 인증으로 사용 금지
+                String purpose = claims.get("purpose", String.class);
+                if (purpose == null) {
+                    UUID userId = UUID.fromString(claims.getSubject());
+                    String email = claims.get("email", String.class);
 
-                var principal = new AuthenticatedUser(userId, email);
-                var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                    var principal = new AuthenticatedUser(userId, email);
+                    var auth = new UsernamePasswordAuthenticationToken(principal, null, List.of());
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
             } catch (JwtException | IllegalArgumentException ignored) {
                 // 잘못된 토큰 → 미인증 상태로 통과
             }

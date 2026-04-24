@@ -10,6 +10,9 @@ import com.secretbox.auth.dto.RegisterResponse;
 import com.secretbox.common.exception.ApiException;
 import com.secretbox.user.domain.User;
 import com.secretbox.user.repository.UserRepository;
+import com.secretbox.user.service.TwoFactorService;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import de.mkammerer.argon2.Argon2;
 import de.mkammerer.argon2.Argon2Factory;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -34,6 +38,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final TwoFactorService twoFactorService;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
     @Value("${app.security.kdf.min-iterations}")
@@ -84,7 +89,7 @@ public class AuthService {
             .protectedDek(decodeBase64(req.protectedDek(), "protectedDek"))
             .protectedDekIv(decodeBase64(req.protectedDekIv(), "protectedDekIv"))
             .recoveryHash(req.recoveryCodeHash())
-            .twoFactorEnabled(true)
+            .twoFactorEnabled(false)
             .build();
 
         User saved = userRepository.save(user);
@@ -159,16 +164,62 @@ public class AuthService {
             throw invalidCredentials();
         }
 
+        // 2FA가 활성화돼있으면 protectedDek은 아직 안 주고 단명 토큰만 반환
+        if (user.isTwoFactorEnabled() && user.getTotpSecret() != null) {
+            String token = jwtService.issueTwoFactorToken(user.getId());
+            log.info("2FA required for login: user={}", user.getId());
+            return LoginResponse.twoFactorRequired(token);
+        }
+
+        return issueFullSession(user, userAgent, ipAddress, deviceId, false);
+    }
+
+    /**
+     * 2FA 2단계 — twoFactorToken 검증 + TOTP/recovery 코드 검증 → 풀 세션 발급.
+     * recovery code로 통과 시 응답에 recoveryUsed=true 표시 (2FA는 이미 폐기된 상태).
+     */
+    @Transactional
+    public LoginResponse loginTwoFactor(String twoFactorToken, String code,
+                                        String userAgent, String ipAddress, String deviceId) {
+        UUID userId = parseTwoFactorToken(twoFactorToken);
+        User user = userRepository.findById(userId).orElseThrow(this::invalidCredentials);
+
+        var verify = twoFactorService.verifyForLogin(userId, code);
+        if (!verify.ok()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_TOTP_CODE",
+                "코드가 올바르지 않습니다");
+        }
+
+        return issueFullSession(user, userAgent, ipAddress, deviceId, verify.recoveryUsed());
+    }
+
+    private UUID parseTwoFactorToken(String token) {
+        try {
+            Claims claims = jwtService.parse(token);
+            String purpose = claims.get("purpose", String.class);
+            if (!"2fa".equals(purpose)) {
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_2FA_TOKEN",
+                    "잘못된 토큰입니다");
+            }
+            return UUID.fromString(claims.getSubject());
+        } catch (JwtException | IllegalArgumentException e) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_2FA_TOKEN",
+                "토큰이 만료됐거나 잘못됐습니다. 처음부터 다시 시도해주세요");
+        }
+    }
+
+    private LoginResponse issueFullSession(User user, String userAgent, String ipAddress,
+                                           String deviceId, boolean recoveryUsed) {
         String accessToken = jwtService.issueAccessToken(user.getId(), user.getEmail());
         String refreshToken = refreshTokenService.issue(user.getId(), userAgent, ipAddress, deviceId);
         log.info("User logged in: id={}, email={}, device={}", user.getId(), user.getEmail(), deviceId);
-
-        return new LoginResponse(
+        return LoginResponse.fullSession(
             accessToken,
             refreshToken,
             Base64.getEncoder().encodeToString(user.getProtectedDek()),
             Base64.getEncoder().encodeToString(user.getProtectedDekIv()),
-            new LoginResponse.UserSummary(user.getId(), user.getEmail())
+            new LoginResponse.UserSummary(user.getId(), user.getEmail()),
+            recoveryUsed
         );
     }
 

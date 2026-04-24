@@ -38,6 +38,21 @@ public class JwtService {
             .compact();
     }
 
+    /**
+     * 2FA 중간 단계용 단명 토큰. 비번 검증 통과 후 TOTP 입력까지의 5분 윈도우.
+     * purpose claim이 "2fa"라 일반 access token과 구분됨 (filter는 purpose 없는 것만 허용).
+     */
+    public String issueTwoFactorToken(UUID userId) {
+        Instant now = Instant.now();
+        return Jwts.builder()
+            .subject(userId.toString())
+            .claim("purpose", "2fa")
+            .issuedAt(Date.from(now))
+            .expiration(Date.from(now.plus(5, ChronoUnit.MINUTES)))
+            .signWith(key)
+            .compact();
+    }
+
     public Claims parse(String token) {
         return Jwts.parser()
             .verifyWith(key)

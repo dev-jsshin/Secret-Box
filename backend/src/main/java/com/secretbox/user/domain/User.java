@@ -51,6 +51,17 @@ public class User {
     @Column(name = "two_factor_enabled", nullable = false)
     private boolean twoFactorEnabled;
 
+    /** 마스터 로그인용 TOTP secret (base32). NULL이면 미등록. */
+    @Column(name = "totp_secret", length = 64)
+    private String totpSecret;
+
+    /**
+     * 단일 long recovery code의 SHA-256 hash (base64).
+     * 사용 시 2FA 자동 비활성화 ("kill switch") — 사용자는 다시 enroll 해야 함.
+     */
+    @Column(name = "totp_recovery_hash", length = 128)
+    private String totpRecoveryHash;
+
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 

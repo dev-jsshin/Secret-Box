@@ -118,6 +118,73 @@
   color: var(--ink-secondary);
 }
 
+/* 로그인 후 recovery 사용 알림 배너 */
+.settings__banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  background: rgba(217, 168, 97, 0.08);
+  border: 1px solid rgba(217, 168, 97, 0.35);
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-secondary);
+}
+
+.settings__banner strong {
+  color: var(--ink-primary);
+  font-weight: 600;
+}
+
+.settings__banner svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--warning);
+}
+
+/* ---------- 분류 탭 (account / security) ---------- */
+.settings__tabs {
+  display: flex;
+  gap: 0.15rem;
+  border-bottom: 1px solid var(--line-subtle);
+  margin-top: 0.25rem;
+}
+
+.settings__tab {
+  position: relative;
+  background: transparent;
+  border: 0;
+  padding: 0.55rem 0.95rem 0.65rem;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 180ms var(--ease);
+}
+
+.settings__tab:hover {
+  color: var(--ink-secondary);
+}
+
+.settings__tab.is-active {
+  color: var(--amber);
+}
+
+.settings__tab.is-active::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: -1px;
+  height: 2px;
+  background: var(--amber);
+  border-radius: 2px 2px 0 0;
+}
+
 /* ---------- content (scrollable middle) ---------- */
 .settings__content {
   flex: 1;

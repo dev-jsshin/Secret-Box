@@ -6,6 +6,12 @@ import com.secretbox.user.dto.ChangePasswordResponse;
 import com.secretbox.user.dto.RevokeOthersRequest;
 import com.secretbox.user.dto.RevokeOthersResponse;
 import com.secretbox.user.dto.SessionListResponse;
+import com.secretbox.user.dto.TwoFactorCodeRequest;
+import com.secretbox.user.dto.TwoFactorConfirmRequest;
+import com.secretbox.user.dto.TwoFactorEnableConfirmResponse;
+import com.secretbox.user.dto.TwoFactorInitResponse;
+import com.secretbox.user.dto.TwoFactorStatusResponse;
+import com.secretbox.user.service.TwoFactorService;
 import com.secretbox.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
@@ -28,6 +34,7 @@ import java.util.UUID;
 public class UserController {
 
     private final UserService userService;
+    private final TwoFactorService twoFactorService;
 
     @GetMapping("/me")
     public ResponseEntity<MeResponse> me(@AuthenticationPrincipal AuthenticatedUser user) {
@@ -74,6 +81,43 @@ public class UserController {
     ) {
         int revoked = userService.revokeOtherSessions(user.userId(), request.currentRefreshToken());
         return ResponseEntity.ok(new RevokeOthersResponse(revoked));
+    }
+
+    // ==========================================================
+    // 2FA (TOTP) — 마스터 로그인용
+    // ==========================================================
+
+    @GetMapping("/me/2fa")
+    public ResponseEntity<TwoFactorStatusResponse> getTwoFactorStatus(
+        @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(twoFactorService.status(user.userId()));
+    }
+
+    @PostMapping("/me/2fa/init")
+    public ResponseEntity<TwoFactorInitResponse> initTwoFactor(
+        @AuthenticationPrincipal AuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(twoFactorService.initEnable(user.userId()));
+    }
+
+    @PostMapping("/me/2fa/confirm")
+    public ResponseEntity<TwoFactorEnableConfirmResponse> confirmTwoFactor(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @Valid @RequestBody TwoFactorConfirmRequest request
+    ) {
+        return ResponseEntity.ok(
+            twoFactorService.confirmEnable(user.userId(), request.code1(), request.code2())
+        );
+    }
+
+    @PostMapping("/me/2fa/disable")
+    public ResponseEntity<Void> disableTwoFactor(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @Valid @RequestBody TwoFactorCodeRequest request
+    ) {
+        twoFactorService.disable(user.userId(), request.code());
+        return ResponseEntity.noContent().build();
     }
 
     public record MeResponse(String id, String email) {}

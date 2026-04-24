@@ -9,7 +9,7 @@ import Modal from '../components/Modal';
 import SecurityExplainer from '../components/SecurityExplainer';
 import AlertModal from '../components/AlertModal';
 
-import { authApi } from '../api/auth';
+import { authApi, type LoginResponse } from '../api/auth';
 import { ApiError, setAccessToken, setRefreshToken } from '../api/client';
 import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
 import { decrypt } from '../crypto/cipher';
@@ -34,6 +34,14 @@ interface ErrorAlert {
 interface LocationState {
   justRegistered?: boolean;
   email?: string;
+}
+
+interface PendingTwoFactor {
+  twoFactorToken: string;
+  kek: Uint8Array;
+  kdfSalt: Uint8Array;
+  kdfParams: { iterations: number; memoryKb: number; parallelism: number };
+  email: string;
 }
 
 function mapApiErrorToAlert(error: unknown): ErrorAlert {
@@ -81,6 +89,10 @@ export default function Login() {
   const [passwordError, setPasswordError] = useState('');
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
+  const [pending2fa, setPending2fa] = useState<PendingTwoFactor | null>(null);
+  const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+
   // 체크박스/이메일 변경 시 localStorage 동기화
   useEffect(() => {
     try {
@@ -94,9 +106,52 @@ export default function Login() {
     }
   }, [rememberEmail, email]);
 
+  /**
+   * 1FA(비번만) 또는 2FA 통과 후 호출 — 응답에서 protectedDek 풀어 DEK 복구 + 세션 저장.
+   */
+  async function completeLogin(
+    result: LoginResponse,
+    kek: Uint8Array,
+    kdfSalt: Uint8Array,
+    derivedKdf: { iterations: number; memoryKb: number; parallelism: number },
+  ) {
+    if (
+      !result.protectedDek || !result.protectedDekIv
+      || !result.user || !result.accessToken || !result.refreshToken
+    ) {
+      throw new Error('서버 응답이 불완전합니다');
+    }
+    const protectedDek = base64ToBytes(result.protectedDek);
+    const protectedDekIv = base64ToBytes(result.protectedDekIv);
+    const dek = await decrypt(kek, protectedDek, protectedDekIv);
+
+    setAccessToken(result.accessToken);
+    setRefreshToken(result.refreshToken);
+    setSession({
+      userId: result.user.id,
+      email: result.user.email,
+      accessToken: result.accessToken,
+      dek,
+      unlock: {
+        protectedDek,
+        protectedDekIv,
+        kdfSalt,
+        kdfParams: derivedKdf,
+      },
+    });
+    // recovery code로 통과한 경우 → 2FA가 비활성화됐으니 사용자에게 알리고 설정 페이지로
+    if (result.recoveryUsed) {
+      navigate('/settings?tab=security', {
+        replace: true,
+        state: { recoveryUsed: true },
+      });
+      return;
+    }
+    navigate('/vault');
+  }
+
   const mutation = useMutation({
     mutationFn: async ({ email, password }: LoginPayload) => {
-      // 1) KDF 파라미터 받기
       const params = await authApi.preLogin(email);
       const kdfParams = {
         salt: base64ToBytes(params.kdfSalt),
@@ -104,50 +159,77 @@ export default function Login() {
         memoryKb: params.kdfMemoryKb,
         parallelism: params.kdfParallelism,
       };
-
-      // 2) KEK + authHash 파생
       const kek = await deriveKek(password, kdfParams);
       const authHash = await deriveAuthHash(kek, password);
-
-      // 3) 서버 검증 → JWT + protectedDek
       const result = await authApi.login(email, bytesToBase64(authHash));
-
-      // 4) protectedDek을 KEK로 풀어서 DEK 복구 (브라우저 안에서만)
-      const protectedDek = base64ToBytes(result.protectedDek);
-      const protectedDekIv = base64ToBytes(result.protectedDekIv);
-      const dek = await decrypt(kek, protectedDek, protectedDekIv);
-
-      return {
-        result,
-        dek,
-        protectedDek,
-        protectedDekIv,
-        kdfSalt: kdfParams.salt,
-        derivedKdf: {
-          iterations: kdfParams.iterations,
-          memoryKb: kdfParams.memoryKb,
-          parallelism: kdfParams.parallelism,
-        },
-      };
+      return { result, kek, kdfParams, email };
     },
-    onSuccess: ({ result, dek, protectedDek, protectedDekIv, kdfSalt, derivedKdf }) => {
-      setAccessToken(result.accessToken);
-      setRefreshToken(result.refreshToken);
-      setSession({
-        userId: result.user.id,
-        email: result.user.email,
-        accessToken: result.accessToken,
-        dek,
-        unlock: {
-          protectedDek,
-          protectedDekIv,
-          kdfSalt,
+    onSuccess: async ({ result, kek, kdfParams, email }) => {
+      const derivedKdf = {
+        iterations: kdfParams.iterations,
+        memoryKb: kdfParams.memoryKb,
+        parallelism: kdfParams.parallelism,
+      };
+      if (result.requires2fa && result.twoFactorToken) {
+        // 2FA 단계로 — KEK은 메모리에 보관해뒀다가 코드 통과 후 protectedDek 풀 때 재사용
+        setPending2fa({
+          twoFactorToken: result.twoFactorToken,
+          kek,
+          kdfSalt: kdfParams.salt,
           kdfParams: derivedKdf,
-        },
-      });
-      navigate('/vault');
+          email,
+        });
+        setCode('');
+        setCodeError('');
+        return;
+      }
+      try {
+        await completeLogin(result, kek, kdfParams.salt, derivedKdf);
+      } catch (e) {
+        setErrorAlert({
+          title: '로그인 후처리 실패',
+          message: e instanceof Error ? e.message : '잠시 후 다시 시도해주세요.',
+        });
+      }
     },
     onError: (error) => {
+      setErrorAlert(mapApiErrorToAlert(error));
+    },
+  });
+
+  const twoFactorMutation = useMutation({
+    mutationFn: async (codeInput: string) => {
+      if (!pending2fa) throw new Error('NO_PENDING');
+      const result = await authApi.loginTwoFactor(pending2fa.twoFactorToken, codeInput);
+      return result;
+    },
+    onSuccess: async (result) => {
+      if (!pending2fa) return;
+      try {
+        await completeLogin(result, pending2fa.kek, pending2fa.kdfSalt, pending2fa.kdfParams);
+        setPending2fa(null);
+      } catch (e) {
+        setErrorAlert({
+          title: '로그인 후처리 실패',
+          message: e instanceof Error ? e.message : '잠시 후 다시 시도해주세요.',
+        });
+      }
+    },
+    onError: (error) => {
+      if (error instanceof ApiError) {
+        if (error.code === 'INVALID_TOTP_CODE') {
+          setCodeError('코드가 올바르지 않습니다');
+          return;
+        }
+        if (error.code === 'INVALID_2FA_TOKEN') {
+          setErrorAlert({
+            title: '시간 초과',
+            message: '인증 시간이 만료되었습니다. 처음부터 다시 로그인해주세요.',
+          });
+          setPending2fa(null);
+          return;
+        }
+      }
       setErrorAlert(mapApiErrorToAlert(error));
     },
   });
@@ -185,6 +267,24 @@ export default function Login() {
     mutation.mutate({ email, password });
   }
 
+  function handleTwoFactorSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setCodeError('코드를 입력해주세요');
+      return;
+    }
+    setCodeError('');
+    twoFactorMutation.mutate(trimmed);
+  }
+
+  function handleCancel2fa() {
+    setPending2fa(null);
+    setCode('');
+    setCodeError('');
+    setPassword('');
+  }
+
   function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
     setEmail(e.target.value);
   }
@@ -219,13 +319,55 @@ export default function Login() {
           </button>
         </section>
 
-        {state.justRegistered && (
+        {state.justRegistered && !pending2fa && (
           <p className="login__welcome rise delay-2">
             <span className="login__welcomeDot" aria-hidden />
             가입이 완료되었습니다. 이제 들어와주세요.
           </p>
         )}
 
+        {pending2fa && (
+          <form className="login__form" onSubmit={handleTwoFactorSubmit} noValidate>
+            <p className="login__welcome rise delay-2">
+              <span className="login__welcomeDot" aria-hidden />
+              비밀번호 확인됨. authenticator의 6자리 코드를 입력해주세요.
+            </p>
+            <div className="rise delay-3">
+              <FormField
+                id="totp-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                autoFocus
+                label="2FA 코드 (또는 recovery code)"
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                error={codeError}
+              />
+            </div>
+            <div className="rise delay-4">
+              <Button
+                type="submit"
+                loading={twoFactorMutation.isPending}
+                loadingLabel="확인 중…"
+              >
+                잠금 해제
+              </Button>
+            </div>
+            <button
+              type="button"
+              className="login__explainLink"
+              onClick={handleCancel2fa}
+              style={{ marginTop: '0.6rem' }}
+            >
+              <span className="login__explainArrow" aria-hidden>←</span>
+              <span>다른 계정으로 로그인</span>
+            </button>
+          </form>
+        )}
+
+        {!pending2fa && (
         <form className="login__form" onSubmit={handleSubmit} noValidate>
           <div className="rise delay-3">
             <FormField
@@ -275,13 +417,16 @@ export default function Login() {
             </Button>
           </div>
         </form>
+        )}
 
+        {!pending2fa && (
         <p className="login__altLink rise delay-6">
           처음이신가요?&nbsp;
           <Link to="/register" className="login__altAnchor">
             회원가입 →
           </Link>
         </p>
+        )}
 
         <footer className="login__foot rise delay-6">
           <p className="login__system">

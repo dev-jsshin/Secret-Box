@@ -1,5 +1,5 @@
-import { FormEvent, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
@@ -7,6 +7,7 @@ import Button from '../components/Button';
 import FormField from '../components/FormField';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
 import AlertModal from '../components/AlertModal';
+import TwoFactorCard from '../components/TwoFactorCard';
 import { scorePassword } from '../lib/passwordTools';
 
 import { authApi } from '../api/auth';
@@ -27,11 +28,39 @@ interface ErrorAlert {
   message?: string;
 }
 
+type SettingsTab = 'account' | 'security';
+
+const TABS: { id: SettingsTab; label: string; sub: string }[] = [
+  { id: 'account',  label: '계정', sub: '이메일과 보관함 비밀번호' },
+  { id: 'security', label: '보안', sub: '잠금 · 2단계 인증 · 활성 세션' },
+];
+
 export default function Settings() {
   const navigate = useNavigate();
+  const location = useLocation();
   const dek = useSessionStore((s) => s.dek);
   const email = useSessionStore((s) => s.email);
   const unlockMaterial = useSessionStore((s) => s.unlockMaterial);
+
+  // URL ?tab=security 와 동기화 — 새로고침/공유 링크 보존
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const t = new URLSearchParams(location.search).get('tab');
+    return t === 'security' ? 'security' : 'account';
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('tab') !== activeTab) {
+      params.set('tab', activeTab);
+      navigate({ search: params.toString() }, { replace: true });
+    }
+  }, [activeTab, location.search, navigate]);
+
+  const activeTabInfo = TABS.find((t) => t.id === activeTab) ?? TABS[0];
+
+  // 로그인 페이지에서 recovery code로 통과 시 navigate state로 알림 전달
+  const recoveryUsed = (location.state as { recoveryUsed?: boolean } | null)?.recoveryUsed;
+
   const setSession = useSessionStore((s) => s.setSession);
   const clear = useSessionStore((s) => s.clear);
   const sessionUserId = useSessionStore((s) => s.userId);
@@ -226,11 +255,27 @@ export default function Settings() {
 
           <section className="settings__intro rise delay-2">
             <h1 className="settings__title">설정</h1>
-            <p className="settings__sub">계정과 보관함 비밀번호</p>
+            <p className="settings__sub">{activeTabInfo.sub}</p>
           </section>
+
+          <nav className="settings__tabs" role="tablist" aria-label="설정 분류">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                className={'settings__tab' + (activeTab === tab.id ? ' is-active' : '')}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
         </header>
 
         <section className="settings__content">
+        {activeTab === 'account' && (<>
         {/* 계정 정보 */}
         <section className="settings__card rise delay-3">
           <h2 className="settings__cardTitle">계정</h2>
@@ -241,9 +286,22 @@ export default function Settings() {
             </div>
           </dl>
         </section>
+        </>)}
+
+        {activeTab === 'security' && (<>
+        {recoveryUsed && (
+          <div className="settings__banner">
+            <AlertIcon />
+            <div>
+              <strong>Recovery code를 사용해 로그인했습니다.</strong>
+              <br />
+              2FA가 자동 비활성화됐어요. 필요하면 아래에서 다시 활성화해주세요.
+            </div>
+          </div>
+        )}
 
         {/* 자동 잠금 */}
-        <section className="settings__card rise delay-4">
+        <section className="settings__card rise delay-3">
           <h2 className="settings__cardTitle">자동 잠금</h2>
           <div className="settings__notice">
             <ClockIcon />
@@ -273,6 +331,9 @@ export default function Settings() {
             <span>지금 잠그기</span>
           </button>
         </section>
+
+        {/* 로그인 2FA */}
+        <TwoFactorCard onError={(msg) => setErrorAlert({ title: '오류', message: msg })} />
 
         {/* 활성 세션 */}
         <section className="settings__card rise delay-5">
@@ -331,9 +392,11 @@ export default function Settings() {
             </button>
           )}
         </section>
+        </>)}
 
+        {activeTab === 'account' && (<>
         {/* 보관함 비밀번호 변경 */}
-        <section className="settings__card rise delay-6">
+        <section className="settings__card rise delay-4">
           <h2 className="settings__cardTitle">보관함 비밀번호 변경</h2>
 
           <div className="settings__notice">
@@ -399,6 +462,7 @@ export default function Settings() {
             </div>
           </form>
         </section>
+        </>)}
         </section>
 
         <footer className="settings__foot">

@@ -2,7 +2,7 @@ import { InputHTMLAttributes, ReactNode, forwardRef, useState } from 'react';
 import './FormField.css';
 
 interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
+  label: ReactNode;
   index?: string;
   trailing?: ReactNode;
   copyable?: boolean;   // 입력 오른쪽에 복사 버튼 추가 (내부 아이콘 버튼 영역)

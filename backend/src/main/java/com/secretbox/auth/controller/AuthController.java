@@ -1,5 +1,6 @@
 package com.secretbox.auth.controller;
 
+import com.secretbox.auth.dto.Login2faRequest;
 import com.secretbox.auth.dto.LoginRequest;
 import com.secretbox.auth.dto.LoginResponse;
 import com.secretbox.auth.dto.LogoutRequest;
@@ -45,6 +46,21 @@ public class AuthController {
     ) {
         return ResponseEntity.ok(
             authService.login(request,
+                httpRequest.getHeader("User-Agent"),
+                clientIp(httpRequest),
+                httpRequest.getHeader("X-Device-Id"))
+        );
+    }
+
+    @PostMapping("/login-2fa")
+    public ResponseEntity<LoginResponse> loginTwoFactor(
+        @Valid @RequestBody Login2faRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(
+            authService.loginTwoFactor(
+                request.twoFactorToken(),
+                request.code(),
                 httpRequest.getHeader("User-Agent"),
                 clientIp(httpRequest),
                 httpRequest.getHeader("X-Device-Id"))

@@ -36,6 +36,19 @@ export interface RevokeOthersResponse {
   revokedCount: number;
 }
 
+export interface TwoFactorStatusResponse {
+  enabled: boolean;
+}
+
+export interface TwoFactorInitResponse {
+  secret: string;       // base32
+  otpauthUri: string;   // QR 인코딩 또는 직접 표시
+}
+
+export interface TwoFactorEnableConfirmResponse {
+  recoveryCode: string;   // 32자 long single-use kill switch — 한 번만 응답
+}
+
 export const usersApi = {
   changePassword: (body: ChangePasswordRequest) =>
     apiFetch<ChangePasswordResponse>('/users/me/password', {
@@ -59,5 +72,24 @@ export const usersApi = {
     apiFetch<RevokeOthersResponse>('/users/me/sessions/revoke-others', {
       method: 'POST',
       body: JSON.stringify({ currentRefreshToken: getRefreshToken() ?? '' }),
+    }),
+
+  // ---------------- 2FA ----------------
+  getTwoFactorStatus: () =>
+    apiFetch<TwoFactorStatusResponse>('/users/me/2fa', { method: 'GET' }),
+
+  initTwoFactor: () =>
+    apiFetch<TwoFactorInitResponse>('/users/me/2fa/init', { method: 'POST' }),
+
+  confirmTwoFactor: (code1: string, code2: string) =>
+    apiFetch<TwoFactorEnableConfirmResponse>('/users/me/2fa/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code1, code2 }),
+    }),
+
+  disableTwoFactor: (code: string) =>
+    apiFetch<void>('/users/me/2fa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
     }),
 };

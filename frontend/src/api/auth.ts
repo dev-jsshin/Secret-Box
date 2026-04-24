@@ -9,11 +9,16 @@ export interface PreLoginResponse {
 }
 
 export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  protectedDek: string;       // base64
-  protectedDekIv: string;     // base64
-  user: { id: string; email: string };
+  /** true면 2FA 코드 추가 입력 필요 — accessToken 등은 비어있고 twoFactorToken만 옴 */
+  requires2fa?: boolean;
+  twoFactorToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+  protectedDek?: string;       // base64
+  protectedDekIv?: string;     // base64
+  user?: { id: string; email: string };
+  /** recovery code로 통과한 경우 true — 2FA가 자동 비활성화됨 */
+  recoveryUsed?: boolean;
 }
 
 export interface RefreshResponse {
@@ -51,6 +56,13 @@ export const authApi = {
       method: 'POST',
       headers: { 'X-Device-Id': getDeviceId() },
       body: JSON.stringify({ email, authHash }),
+    }),
+
+  loginTwoFactor: (twoFactorToken: string, code: string) =>
+    apiFetch<LoginResponse>('/auth/login-2fa', {
+      method: 'POST',
+      headers: { 'X-Device-Id': getDeviceId() },
+      body: JSON.stringify({ twoFactorToken, code }),
     }),
 
   refresh: (refreshToken: string) =>
