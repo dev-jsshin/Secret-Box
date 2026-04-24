@@ -12,7 +12,7 @@ export interface VaultItemDto {
 
 export interface VaultItemHistoryDto {
   id: string;
-  changeType: 'created' | 'updated' | 'deleted';
+  changeType: 'updated' | 'restored';
   encryptedData: string;
   encryptedIv: string;
   changedAt: string;
@@ -41,4 +41,9 @@ export const vaultApi = {
 
   history: (id: string) =>
     apiFetch<{ itemId: string; history: VaultItemHistoryDto[] }>(`/vault/items/${id}/history`),
+
+  restoreVersion: (id: string, historyId: string) =>
+    apiFetch<VaultItemDto>(`/vault/items/${id}/restore-version/${historyId}`, {
+      method: 'POST',
+    }),
 };

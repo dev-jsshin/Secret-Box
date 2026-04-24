@@ -1,0 +1,182 @@
+.ihm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.ihm__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ihm__title {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+.ihm__subtitle {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: var(--ink-secondary);
+  line-height: 1.55;
+}
+
+.ihm__inlineName {
+  color: var(--amber);
+  font-weight: 700;
+}
+
+/* toolbar: 현재 버전 칩 + 모두 보기 토글 */
+.ihm__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.ihm__currentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background: rgba(132, 168, 126, 0.06);
+  border: 1px solid rgba(132, 168, 126, 0.28);
+  border-radius: 999px;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--success);
+}
+
+.ihm__currentDot {
+  width: 6px;
+  height: 6px;
+  background: var(--success);
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px rgba(132, 168, 126, 0.6);
+}
+
+.ihm__revealAllBtn {
+  padding: 0.35rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease),
+              background 180ms var(--ease);
+}
+
+.ihm__revealAllBtn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ihm__revealAllBtn.is-on {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
+}
+
+.ihm__state {
+  text-align: center;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  padding: 1.5rem 0;
+}
+
+.ihm__list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.ihm__entry {
+  padding: 0.85rem 1rem;
+  background: var(--bg-base);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.ihm__entryHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.ihm__time {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+}
+
+.ihm__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ihm__row {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.ihm__label {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink-muted);
+  min-width: 60px;
+  flex: 0 0 60px;
+}
+
+.ihm__value {
+  flex: 1;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  color: var(--ink-primary);
+  word-break: break-all;
+}
+
+.ihm__value.is-mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.ihm__pillBtn {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease);
+}
+
+.ihm__pillBtn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+

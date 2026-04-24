@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
 import AlertModal from '../components/AlertModal';
 import Avatar from '../components/vault/Avatar';
 import AddEditItemModal from '../components/vault/AddEditItemModal';
-import ItemDetailModal from '../components/vault/ItemDetailModal';
+import ItemHistoryModal from '../components/vault/ItemHistoryModal';
 
 import {
   catalogApi,
@@ -29,6 +29,11 @@ interface ErrorAlert {
   message?: string;
 }
 
+interface ConfirmDelete {
+  id: string;
+  label: string;
+}
+
 export default function Vault() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -37,9 +42,12 @@ export default function Vault() {
   const clear = useSessionStore((s) => s.clear);
 
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<DecryptedVaultItem | null>(null);
-  const [selected, setSelected] = useState<DecryptedVaultItem | null>(null);
+  const [historyOf, setHistoryOf] = useState<DecryptedVaultItem | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<ConfirmDelete | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
   // DEK 없으면 (새로고침 등) 로그인으로
@@ -85,6 +93,28 @@ export default function Vault() {
     enabled: !!dek,
   });
 
+  // items 리프레시 시 열려있는 모달의 state도 최신 version으로 동기화
+  // (복원/수정 후 cached 상태로 다시 저장 시도하면 VERSION_CONFLICT 발생하던 버그 방지)
+  useEffect(() => {
+    if (!items) return;
+    if (editing) {
+      const updated = items.find((i) => i.id === editing.id);
+      if (updated && updated.version !== editing.version) {
+        setEditing(updated);
+      } else if (!updated) {
+        setEditing(null);   // 항목이 삭제됨
+      }
+    }
+    if (historyOf) {
+      const updated = items.find((i) => i.id === historyOf.id);
+      if (updated && updated.version !== historyOf.version) {
+        setHistoryOf(updated);
+      } else if (!updated) {
+        setHistoryOf(null);
+      }
+    }
+  }, [items, editing, historyOf]);
+
   // 헤더 통계: 총 개수 + 카테고리별 카운트 (count desc 정렬)
   const stats = useMemo(() => {
     if (!items) return null;
@@ -101,20 +131,40 @@ export default function Vault() {
 
   const filtered = useMemo(() => {
     if (!items) return [];
+    let list = items;
+    if (activeCategory) {
+      list = list.filter((i) => i.plaintext.category === activeCategory);
+    }
     const q = search.toLowerCase().trim();
-    if (!q) return items;
-    return items.filter((i) =>
-      i.plaintext.name.toLowerCase().includes(q)
-      || i.plaintext.username?.toLowerCase().includes(q)
-      || CATEGORY_LABELS[i.plaintext.category].includes(q),
-    );
-  }, [items, search]);
+    if (q) {
+      list = list.filter((i) =>
+        i.plaintext.name.toLowerCase().includes(q)
+        || i.plaintext.username?.toLowerCase().includes(q)
+        || CATEGORY_LABELS[i.plaintext.category].includes(q),
+      );
+    }
+    return list;
+  }, [items, search, activeCategory]);
+
+  async function handleCopy(item: DecryptedVaultItem) {
+    try {
+      await navigator.clipboard.writeText(item.plaintext.password);
+      setCopiedId(item.id);
+      setTimeout(() => {
+        setCopiedId((cur) => (cur === item.id ? null : cur));
+      }, 1500);
+    } catch {
+      setErrorAlert({
+        title: '복사 실패',
+        message: '클립보드에 접근할 수 없습니다.',
+      });
+    }
+  }
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => vaultApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault-items'] });
-      setSelected(null);
     },
     onError: (error) => {
       const msg = error instanceof ApiError ? error.message : '삭제에 실패했습니다.';
@@ -136,17 +186,18 @@ export default function Vault() {
   if (!dek) return null;
 
   return (
-    <div className="page">
+    <div className="page page--vault">
       <main className="vault">
         <header className="vault__head">
           <div className="vault__topStrip rise delay-1">
             <div className="vault__brand">
-              <Logo size={26} />
+              <Logo size={28} />
               <span className="vault__wordmark">SecretBox</span>
             </div>
             <div className="vault__user">
               <span className="vault__email">{email}</span>
-              <button type="button" className="vault__logout" onClick={handleLogout}>
+              <Link to="/settings" className="vault__userBtn">설정</Link>
+              <button type="button" className="vault__userBtn" onClick={handleLogout}>
                 로그아웃
               </button>
             </div>
@@ -167,15 +218,45 @@ export default function Vault() {
                   현재 <em>{stats.total}개</em>의 암호가<br />
                   안전하게 잠겨있어요.
                 </h1>
-                <ul className="vault__breakdown">
-                  {stats.breakdown.map(([cat, count]) => (
-                    <li key={cat} className="vault__breakdownItem">
-                      <span className="vault__breakdownLabel">
-                        {CATEGORY_LABELS[cat]}
-                      </span>
-                      <span className="vault__breakdownCount">{count}</span>
-                    </li>
-                  ))}
+                <ul className="vault__filters" role="tablist" aria-label="카테고리 필터">
+                  <li>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={activeCategory === null}
+                      className={
+                        'vault__filterChip'
+                        + (activeCategory === null ? ' is-active' : '')
+                      }
+                      onClick={() => setActiveCategory(null)}
+                    >
+                      <span className="vault__filterLabel">전체</span>
+                      <span className="vault__filterCount">{stats.total}</span>
+                    </button>
+                  </li>
+                  {stats.breakdown.map(([cat, count]) => {
+                    const isActive = activeCategory === cat;
+                    return (
+                      <li key={cat}>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          className={
+                            'vault__filterChip' + (isActive ? ' is-active' : '')
+                          }
+                          onClick={() =>
+                            setActiveCategory((prev) => (prev === cat ? null : cat))
+                          }
+                        >
+                          <span className="vault__filterLabel">
+                            {CATEGORY_LABELS[cat]}
+                          </span>
+                          <span className="vault__filterCount">{count}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </>
             )}
@@ -227,7 +308,7 @@ export default function Vault() {
           {!isPending && filtered.length === 0 && items && items.length > 0 && (
             <div className="vault__empty vault__empty--noResults">
               <p className="vault__emptyBody">
-                <span className="mono">{search}</span>에 해당하는 항목이 없습니다.
+                <strong className="vault__searchTerm">{search}</strong>에 해당하는 항목이 없습니다.
               </p>
             </div>
           )}
@@ -237,12 +318,17 @@ export default function Vault() {
               const cat = item.plaintext.catalogSlug
                 ? catalogMap.get(item.plaintext.catalogSlug)
                 : undefined;
+              const displayName = item.plaintext.alias || item.plaintext.name;
+              const subName = item.plaintext.alias
+                ? (cat?.name || item.plaintext.name)
+                : null;
+              const isCopied = copiedId === item.id;
               return (
-                <li key={item.id}>
+                <li key={item.id} className="vault__card">
                   <button
                     type="button"
-                    className="vault__card"
-                    onClick={() => setSelected(item)}
+                    className="vault__cardBody"
+                    onClick={() => setEditing(item)}
                   >
                     <Avatar
                       name={item.plaintext.name}
@@ -251,15 +337,65 @@ export default function Vault() {
                       size={36}
                     />
                     <div className="vault__cardInfo">
-                      <span className="vault__cardName">{item.plaintext.name}</span>
-                      {item.plaintext.username && (
-                        <span className="vault__cardUser">{item.plaintext.username}</span>
-                      )}
+                      <span className="vault__cardName">{displayName}</span>
+                      <span className="vault__cardUser">
+                        {subName && (
+                          <span className="vault__cardSubname">{subName}</span>
+                        )}
+                        {subName && item.plaintext.username && ' · '}
+                        {item.plaintext.username}
+                      </span>
                     </div>
                     <span className="vault__cardCat">
                       {CATEGORY_LABELS[item.plaintext.category]}
                     </span>
                   </button>
+                  <div className="vault__cardActions">
+                    {item.plaintext.url && (
+                      <a
+                        className="vault__cardAction"
+                        href={item.plaintext.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="바로가기"
+                        aria-label="바로가기"
+                      >
+                        <ExternalLinkIcon />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      className={
+                        'vault__cardAction'
+                        + (isCopied ? ' vault__cardAction--copied' : '')
+                      }
+                      onClick={() => handleCopy(item)}
+                      title={isCopied ? '복사됨' : '암호 복사'}
+                      aria-label="암호 복사"
+                    >
+                      {isCopied ? <CheckIcon /> : <CopyIcon />}
+                    </button>
+                    <button
+                      type="button"
+                      className="vault__cardAction"
+                      onClick={() => setHistoryOf(item)}
+                      title="변경 이력"
+                      aria-label="변경 이력"
+                    >
+                      <ClockIcon />
+                    </button>
+                    <button
+                      type="button"
+                      className="vault__cardAction vault__cardAction--danger"
+                      onClick={() =>
+                        setConfirmDelete({ id: item.id, label: displayName })
+                      }
+                      title="삭제"
+                      aria-label="삭제"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 </li>
               );
             })}
@@ -286,17 +422,28 @@ export default function Vault() {
         onError={(msg) => setErrorAlert({ title: '오류', message: msg })}
       />
 
-      <ItemDetailModal
-        item={selected}
-        catalogMap={catalogMap}
-        onClose={() => setSelected(null)}
-        onEdit={() => {
-          setEditing(selected);
-          setSelected(null);
+      <ItemHistoryModal
+        item={historyOf}
+        onClose={() => setHistoryOf(null)}
+      />
+
+      <AlertModal
+        isOpen={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        variant="warning"
+        title="항목을 삭제할까요?"
+        message={
+          confirmDelete
+            ? `"${confirmDelete.label}" 항목을 영구적으로 삭제합니다.`
+            : undefined
+        }
+        onConfirm={() => {
+          if (confirmDelete) deleteMutation.mutate(confirmDelete.id);
+          setConfirmDelete(null);
         }}
-        onDelete={() => {
-          if (selected) deleteMutation.mutate(selected.id);
-        }}
+        confirmLabel="삭제"
+        cancelLabel="취소"
+        destructive
       />
 
       <AlertModal
@@ -307,5 +454,63 @@ export default function Vault() {
         message={errorAlert?.message}
       />
     </div>
+  );
+}
+
+// ---------- inline icons ----------
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <polyline points="12 7 12 12 16 14" />
+    </svg>
+  );
+}
+
+function CopyIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.9"
+         strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="m19 6-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
   );
 }

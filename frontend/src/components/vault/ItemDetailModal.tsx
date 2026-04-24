@@ -14,6 +14,7 @@ interface ItemDetailModalProps {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onShowHistory: () => void;
 }
 
 export default function ItemDetailModal({
@@ -22,6 +23,7 @@ export default function ItemDetailModal({
   onClose,
   onEdit,
   onDelete,
+  onShowHistory,
 }: ItemDetailModalProps) {
   const [revealed, setRevealed] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -152,6 +154,13 @@ export default function ItemDetailModal({
             </>
           ) : (
             <>
+              <button
+                type="button"
+                className="idm__btnGhost"
+                onClick={onShowHistory}
+              >
+                변경 이력
+              </button>
               <button
                 type="button"
                 className="idm__btnGhost"

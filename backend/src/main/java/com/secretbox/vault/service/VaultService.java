@@ -6,6 +6,7 @@ import com.secretbox.vault.domain.VaultItemHistory;
 import com.secretbox.vault.dto.CreateVaultItemRequest;
 import com.secretbox.vault.dto.UpdateVaultItemRequest;
 import com.secretbox.vault.dto.VaultItemDto;
+import com.secretbox.vault.dto.VaultItemHistoryDto;
 import com.secretbox.vault.repository.VaultItemHistoryRepository;
 import com.secretbox.vault.repository.VaultItemRepository;
 import lombok.RequiredArgsConstructor;
@@ -76,6 +77,48 @@ public class VaultService {
         VaultItem item = findOwned(userId, itemId);
         item.setDeletedAt(Instant.now());
         log.info("Vault item soft-deleted: id={}, user={}", itemId, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<VaultItemHistoryDto> history(UUID userId, UUID itemId) {
+        findOwned(userId, itemId);   // ownership check
+        return historyRepository.findAllByVaultItemIdOrderByChangedAtDesc(itemId).stream()
+            .map(VaultItemHistoryDto::from)
+            .toList();
+    }
+
+    @Transactional
+    public VaultItemDto restoreVersion(UUID userId, UUID itemId, UUID historyId) {
+        VaultItem item = findOwned(userId, itemId);
+
+        VaultItemHistory snapshot = historyRepository.findById(historyId)
+            .orElseThrow(this::historyNotFound);
+
+        if (!snapshot.getVaultItemId().equals(itemId) || !snapshot.getUserId().equals(userId)) {
+            throw historyNotFound();
+        }
+
+        // 현재 상태를 history에 스냅샷
+        historyRepository.save(VaultItemHistory.builder()
+            .vaultItemId(item.getId())
+            .userId(userId)
+            .encryptedData(item.getEncryptedData())
+            .encryptedIv(item.getEncryptedIv())
+            .changeType("restored")
+            .build());
+
+        // 스냅샷을 현재 항목에 적용 — @Version이 자동 증가
+        item.setEncryptedData(snapshot.getEncryptedData());
+        item.setEncryptedIv(snapshot.getEncryptedIv());
+
+        log.info("Vault item restored: id={}, fromHistory={}, user={}",
+            itemId, historyId, userId);
+        return VaultItemDto.from(item);
+    }
+
+    private ApiException historyNotFound() {
+        return new ApiException(HttpStatus.NOT_FOUND, "HISTORY_NOT_FOUND",
+            "이력을 찾을 수 없습니다");
     }
 
     private VaultItem findOwned(UUID userId, UUID itemId) {

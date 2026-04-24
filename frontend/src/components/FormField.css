@@ -17,9 +17,9 @@
   align-items: baseline;
   gap: 0.5rem;
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.06em;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--ink-secondary);
   cursor: text;
 }
@@ -61,16 +61,23 @@
 }
 
 .sb-field__input.has-toggle {
-  padding-right: 2.4rem;
+  padding-right: 4.8rem;
 }
 
-/* eye toggle */
-.sb-field__toggle {
+/* 내부 오른쪽 액션 버튼 영역 (눈동자, 복사 등) */
+.sb-field__actions {
   position: absolute;
   right: 0;
   top: 0;
   bottom: 1px;
-  width: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.sb-field__innerBtn {
+  width: 32px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -79,22 +86,25 @@
   background: none;
   border: 0;
   padding: 0;
-  transition: color 200ms var(--ease), transform 200ms var(--ease);
+  border-radius: 4px;
+  transition: color 180ms var(--ease), background 180ms var(--ease),
+              transform 180ms var(--ease);
 }
 
-.sb-field__toggle:hover {
+.sb-field__innerBtn:hover {
   color: var(--amber);
+  background: rgba(212, 146, 74, 0.08);
 }
 
-.sb-field__toggle:active {
+.sb-field__innerBtn:active {
   transform: scale(0.92);
 }
 
-.sb-field__toggle.is-on {
+.sb-field__innerBtn.is-on {
   color: var(--amber);
 }
 
-.sb-field__toggle:focus-visible {
+.sb-field__innerBtn:focus-visible {
   outline: 1px solid var(--amber);
   outline-offset: 2px;
 }

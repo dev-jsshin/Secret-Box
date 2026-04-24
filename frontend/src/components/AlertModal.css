@@ -111,6 +111,49 @@
   outline-offset: 3px;
 }
 
+/* confirm mode: 두 버튼 가로 배치 */
+.sb-alert__actions {
+  margin-top: 0.85rem;
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  gap: 0.55rem;
+}
+
+.sb-alert__actions .sb-alert__action {
+  margin-top: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.sb-alert__action--ghost {
+  background: transparent;
+  color: var(--ink-secondary);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.sb-alert__action--ghost:hover {
+  background: rgba(232, 226, 207, 0.04);
+  color: var(--ink-primary);
+  box-shadow: inset 0 0 0 1px rgba(232, 226, 207, 0.32);
+  transform: none;
+}
+
+.sb-alert__action--danger {
+  background: var(--danger);
+  color: #1A0A0A;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 10px 28px -16px rgba(201, 115, 115, 0.6);
+}
+
+.sb-alert__action--danger:hover {
+  background: #D68585;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.26),
+    0 16px 36px -16px rgba(201, 115, 115, 0.75);
+}
+
 @keyframes alertFade {
   from { opacity: 0; }
   to   { opacity: 1; }

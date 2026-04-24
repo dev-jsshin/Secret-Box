@@ -4,6 +4,7 @@ import com.secretbox.auth.security.AuthenticatedUser;
 import com.secretbox.vault.dto.CreateVaultItemRequest;
 import com.secretbox.vault.dto.UpdateVaultItemRequest;
 import com.secretbox.vault.dto.VaultItemDto;
+import com.secretbox.vault.dto.VaultItemHistoryDto;
 import com.secretbox.vault.service.VaultService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -58,5 +59,24 @@ public class VaultController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/items/{id}/history")
+    public ResponseEntity<HistoryResponse> history(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @PathVariable UUID id
+    ) {
+        List<VaultItemHistoryDto> history = vaultService.history(user.userId(), id);
+        return ResponseEntity.ok(new HistoryResponse(id, history));
+    }
+
+    @PostMapping("/items/{id}/restore-version/{historyId}")
+    public ResponseEntity<VaultItemDto> restoreVersion(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @PathVariable UUID id,
+        @PathVariable UUID historyId
+    ) {
+        return ResponseEntity.ok(vaultService.restoreVersion(user.userId(), id, historyId));
+    }
+
     public record VaultItemListResponse(List<VaultItemDto> items) {}
+    public record HistoryResponse(UUID itemId, List<VaultItemHistoryDto> history) {}
 }

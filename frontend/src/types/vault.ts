@@ -7,6 +7,7 @@ import type { VaultItemDto } from '../api/vault';
  */
 export interface VaultItemPlaintext {
   name: string;
+  alias?: string;              // 사용자 정의 별칭 (예: "회사", "개인")
   catalogSlug?: string;        // 카탈로그 매칭 (있으면)
   category: CategorySlug;
   username?: string;

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Vault from './pages/Vault';
+import Settings from './pages/Settings';
 
 import { setSessionExpiredHandler } from './api/client';
 import { useSessionStore } from './store/session';
@@ -29,6 +30,7 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/vault" element={<Vault />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

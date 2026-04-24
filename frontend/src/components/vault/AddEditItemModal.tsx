@@ -48,6 +48,7 @@ export default function AddEditItemModal({
   const [pickSearch, setPickSearch] = useState('');
 
   const [name, setName] = useState('');
+  const [alias, setAlias] = useState('');
   const [catalogSlug, setCatalogSlug] = useState<string | undefined>();
   const [category, setCategory] = useState<CategorySlug>('other');
   const [username, setUsername] = useState('');
@@ -88,6 +89,7 @@ export default function AddEditItemModal({
     if (initialItem) {
       const p = initialItem.plaintext;
       setName(p.name);
+      setAlias(p.alias ?? '');
       setCatalogSlug(p.catalogSlug);
       setCategory(p.category);
       setUsername(p.username ?? '');
@@ -97,6 +99,7 @@ export default function AddEditItemModal({
       setStep('form');
     } else {
       setName('');
+      setAlias('');
       setCatalogSlug(undefined);
       setCategory('other');
       setUsername('');
@@ -123,21 +126,12 @@ export default function AddEditItemModal({
     setStep('form');
   }
 
-  function generatePassword() {
-    const charset = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-    const len = 20;
-    const arr = new Uint8Array(len);
-    crypto.getRandomValues(arr);
-    let out = '';
-    for (let i = 0; i < len; i++) out += charset[arr[i] % charset.length];
-    setPassword(out);
-  }
-
   const mutation = useMutation({
     mutationFn: async () => {
       if (!dek) throw new Error('NO_DEK');
       const plaintext: VaultItemPlaintext = {
         name: name.trim(),
+        alias: alias.trim() || undefined,
         catalogSlug,
         category,
         username: username.trim(),
@@ -298,6 +292,15 @@ export default function AddEditItemModal({
             />
           )}
 
+          <FormField
+            id="ai-alias"
+            label="별칭"
+            placeholder={selectedFromCatalog ? '예: 회사, 개인' : '(선택)'}
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            hint="같은 서비스 여러 계정을 구분할 때 (예: 네이버 — 회사 / 개인)"
+          />
+
           <div className="ai-form__field">
             <label className="ai-form__label">
               카테고리
@@ -323,28 +326,18 @@ export default function AddEditItemModal({
             placeholder="이메일 또는 사용자명"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            copyable
           />
 
-          <div className="ai-form__pwRow">
-            <div className="ai-form__pwField">
-              <FormField
-                id="ai-password"
-                type="password"
-                label="비밀번호 *"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <button
-              type="button"
-              className="ai-form__genBtn"
-              onClick={generatePassword}
-              title="20자 랜덤 비밀번호 생성"
-            >
-              랜덤
-            </button>
-          </div>
+          <FormField
+            id="ai-password"
+            type="password"
+            label="비밀번호 *"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            copyable
+          />
 
           <FormField
             id="ai-url"

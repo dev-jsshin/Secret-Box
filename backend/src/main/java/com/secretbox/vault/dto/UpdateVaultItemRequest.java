@@ -11,6 +11,6 @@ public record UpdateVaultItemRequest(
     @NotBlank @Size(max = 64)
     String encryptedIv,
 
-    @Min(1)
-    int expectedVersion          // 낙관적 락
+    @Min(0)
+    int expectedVersion          // 낙관적 락 — JPA @Version이 INSERT 시 0이라 0부터 허용
 ) {}

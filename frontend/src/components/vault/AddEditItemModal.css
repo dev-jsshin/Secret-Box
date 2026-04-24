@@ -232,6 +232,33 @@
   letter-spacing: 0.005em;
 }
 
+/* 복사 pill 버튼 (FormField trailing slot) */
+.ai-form__copyBtn {
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease),
+              background 180ms var(--ease);
+}
+
+.ai-form__copyBtn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.ai-form__copyBtn.is-on {
+  border-color: var(--success);
+  color: var(--success);
+  background: rgba(132, 168, 126, 0.06);
+}
+
 .ai-form__select {
   background: transparent;
   border: 0;

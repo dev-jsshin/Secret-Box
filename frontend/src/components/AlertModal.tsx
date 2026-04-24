@@ -11,11 +11,17 @@ interface AlertModalProps {
   title: string;
   message?: string;
   actionLabel?: string;
+  // confirm 모드: onConfirm 지정 시 [취소] [확인] 두 버튼이 렌더된다
+  onConfirm?: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  destructive?: boolean;
 }
 
 /**
- * 작은 안내/에러 모달.
- * 기존 Modal과 별개로 독립 포털을 사용 — ESC + 백드롭 클릭으로 닫힘.
+ * 작은 안내/에러/확인 모달.
+ * onConfirm이 있으면 confirm 모드 (취소+확인 두 버튼).
+ * 그 외엔 단일 액션 모달 — ESC/Enter로 닫힘.
  */
 export default function AlertModal({
   isOpen,
@@ -24,12 +30,23 @@ export default function AlertModal({
   title,
   message,
   actionLabel = '확인',
+  onConfirm,
+  confirmLabel = '확인',
+  cancelLabel = '취소',
+  destructive = false,
 }: AlertModalProps) {
+  const isConfirm = !!onConfirm;
+
   useEffect(() => {
     if (!isOpen) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'Enter') onClose();
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter') {
+        if (isConfirm) onConfirm!();
+        else onClose();
+      }
     };
     document.addEventListener('keydown', onKey);
 
@@ -40,7 +57,7 @@ export default function AlertModal({
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, isConfirm, onClose, onConfirm]);
 
   if (!isOpen) return null;
 
@@ -58,14 +75,37 @@ export default function AlertModal({
           {title}
         </h2>
         {message && <p className="sb-alert__message">{message}</p>}
-        <button
-          type="button"
-          className="sb-alert__action"
-          onClick={onClose}
-          autoFocus
-        >
-          {actionLabel}
-        </button>
+        {isConfirm ? (
+          <div className="sb-alert__actions">
+            <button
+              type="button"
+              className="sb-alert__action sb-alert__action--ghost"
+              onClick={onClose}
+            >
+              {cancelLabel}
+            </button>
+            <button
+              type="button"
+              className={
+                'sb-alert__action'
+                + (destructive ? ' sb-alert__action--danger' : '')
+              }
+              onClick={onConfirm}
+              autoFocus
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="sb-alert__action"
+            onClick={onClose}
+            autoFocus
+          >
+            {actionLabel}
+          </button>
+        )}
       </div>
     </div>,
     document.body,
