@@ -51,12 +51,14 @@ function base32Decode(input: string): Uint8Array {
 async function hmacSha1(key: Uint8Array, message: Uint8Array): Promise<Uint8Array> {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    // TS 5.7+ 에서 Uint8Array가 generic이 되며 WebCrypto 파라미터가 ArrayBuffer로
+    // 좁혀진 ArrayBufferView만 허용 → BufferSource로 명시 캐스트
+    key as BufferSource,
     { name: 'HMAC', hash: 'SHA-1' },
     false,
     ['sign'],
   );
-  const sig = await crypto.subtle.sign('HMAC', cryptoKey, message);
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, message as BufferSource);
   return new Uint8Array(sig);
 }
 

@@ -37,67 +37,74 @@ Zero-knowledge 비밀번호 매니저.
 
 | | 버전 |
 |---|---|
-| **Node.js** | 20.18+ 또는 22+ ([vite-plugin-mkcert](https://github.com/liuweiGL/vite-plugin-mkcert) 호환) |
-| **Java** | 21 |
-| **Docker** | Compose v2 포함 |
-| **IDE (권장)** | IntelliJ IDEA + [EnvFile 플러그인](https://plugins.jetbrains.com/plugin/7861-envfile) |
+| **Docker** | Compose v2 포함 (도커 한 번으로 실행할 때 이것만 있으면 됨) |
+| **Node.js** | 20.18+ 또는 22+ (IDE 기반 개발 시) |
+| **Java** | 21 (IDE 기반 개발 시) |
 
-## 빠른 시작
+## 빠른 시작 — Docker 한 번에 (권장)
 
-### 1) 환경변수 파일 준비
+본인/친구 몇 명이 LAN에서 쓰기에 충분한 구성.
 
 ```bash
-git clone <repo-url>
-cd SecretBox
+git clone https://github.com/dev-jsshin/Secret-Box.git
+cd Secret-Box
 
-# Postgres용 (Docker)
+# 1) 환경변수 템플릿 복사
 cp .env.example .env
 
-# 백엔드용 (IDE 실행 시 EnvFile 플러그인이 읽음)
+# 2) .env 열어서 반드시 교체
+#    - JWT_SECRET: openssl rand -base64 48 로 생성한 값
+#    - POSTGRES_PASSWORD: 강한 랜덤 비밀번호
+
+# 3) 빌드 + 실행 (Postgres + 백엔드 + nginx 프론트 한 번에)
+docker compose up -d --build
+
+# 4) 상태 확인
+docker compose ps
+docker compose logs -f
+```
+
+접속: `https://<호스트-IP>:7444`
+- 같은 Mac에서: `https://localhost:7444`
+- LAN의 다른 PC에서: `https://192.168.x.x:7444` (호스트 Mac의 LAN IP)
+
+> ⚠️ **최초 접속 시 브라우저가 "안전하지 않은 사이트" 경고**를 띄웁니다.
+> self-signed 인증서라 정상입니다. "고급 → 안전하지 않은 사이트로 진행" 누르면 됩니다.
+> 인증서는 컨테이너 볼륨에 유지되므로 재빌드 시 동일한 것이 재사용됩니다.
+
+> ⚠️ HTTP가 아닌 **HTTPS**로 접속해야 합니다. WebCrypto API는 secure context에서만 동작합니다.
+
+**코드 수정 후 반영:** `docker compose up -d --build`
+
+**완전 초기화:** `docker compose down -v` (DB 포함 삭제)
+
+## 개발 모드 (IDE + Vite 라이브 리로드)
+
+기능 개발 시엔 도커 대신 IDE에서 직접 실행이 빠릅니다.
+
+```bash
+# 1) Postgres만 도커로 (백엔드/프론트는 호스트에서 실행)
+cp .env.example .env   # 이미 있으면 생략
+docker compose up -d postgres
+
+# 2) 백엔드용 env
 cp backend/.env.example backend/.env
+# JWT_SECRET 교체
 ```
 
-`backend/.env`의 `JWT_SECRET`은 **반드시 직접 생성한 값으로 교체**:
-```bash
-openssl rand -base64 48   # 출력값을 JWT_SECRET= 뒤에 붙여넣기
-```
-
-### 2) Postgres 시작
-
-```bash
-docker compose up -d
-docker compose ps   # secretbox-postgres가 healthy 상태 확인
-```
-
-### 3) 백엔드 실행 (IntelliJ 등)
-
+**백엔드 (IntelliJ):**
 1. `backend/`를 Gradle 프로젝트로 import
-2. **EnvFile 플러그인 설치** 후 IntelliJ 재시작
-3. `SecretBoxApplication` Run Configuration 열기
-4. **EnvFile 탭** → `Enable EnvFile` 체크 → `+` → `backend/.env` 추가
-5. Run
+2. [EnvFile 플러그인](https://plugins.jetbrains.com/plugin/7861-envfile) 설치 후 재시작
+3. `SecretBoxApplication` Run Configuration → EnvFile 탭에서 `backend/.env` 추가
+4. Run → http://localhost:6333
 
-→ http://localhost:6333
-
-### 4) 프론트엔드 실행
-
+**프론트엔드 (Vite):**
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev    # 최초엔 sudo 비밀번호로 mkcert 시스템 등록
 ```
-
-🔐 **최초 실행 시 sudo 비밀번호를 물어봅니다** — 자체 서명 SSL 인증서를 시스템 신뢰 저장소에 등록하기 위함 (mkcert). 한 번만 입력하면 이후엔 묻지 않습니다.
-
-콘솔 출력 확인:
-```
-  ➜  Local:   https://localhost:7444/
-  ➜  Network: https://192.168.x.x:7444/
-```
-
-브라우저로 `https://localhost:7444` 접속.
-
-> ⚠️ HTTP가 아닌 **HTTPS**로 접속해야 합니다. WebCrypto API가 secure context에서만 동작합니다.
+→ `https://localhost:7444` (브라우저 경고 없음 — mkcert 덕분)
 
 ## 설정 변경
 
