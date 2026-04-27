@@ -28,10 +28,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    # 외부 노출 X — backend 컨테이너만 내부 네트워크로 접근. dev에서 DB 직접 보고 싶으면
-    # ports를 열 수 있음 (주석 해제)
-    # ports:
-    #   - "${POSTGRES_PORT:-5432}:5432"
+    # 호스트에 DB 포트 노출 — IDE/CLI에서 직접 접근 (dev 편의).
+    # 외부 인터넷에 진짜로 노출하지 않으려면 이 줄을 주석 처리하거나,
+    # bind를 명시: "127.0.0.1:${POSTGRES_PORT:-5432}:5432" 로 localhost-only.
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
 
   backend:
     build:
