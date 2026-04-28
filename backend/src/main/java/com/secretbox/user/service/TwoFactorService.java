@@ -1,5 +1,7 @@
 package com.secretbox.user.service;
 
+import com.secretbox.audit.domain.AuditAction;
+import com.secretbox.audit.service.AuditLogService;
 import com.secretbox.auth.service.TotpCodec;
 import com.secretbox.common.exception.ApiException;
 import com.secretbox.user.domain.User;
@@ -31,6 +33,7 @@ public class TwoFactorService {
 
     private final UserRepository userRepository;
     private final TotpCodec totpCodec;
+    private final AuditLogService auditLog;
 
     public TwoFactorStatusResponse status(UUID userId) {
         User user = mustFindUser(userId);
@@ -81,6 +84,7 @@ public class TwoFactorService {
         user.setTotpRecoveryHash(totpCodec.hashRecoveryCode(rawRecovery));
         user.setTwoFactorEnabled(true);
         log.info("2FA enabled: user={}", userId);
+        auditLog.log(userId, AuditAction.TOTP_ENABLED, null, null);
         return new TwoFactorEnableConfirmResponse(rawRecovery);
     }
 
@@ -98,6 +102,7 @@ public class TwoFactorService {
         }
         clearTwoFactor(user);
         log.info("2FA disabled: user={}", userId);
+        auditLog.log(userId, AuditAction.TOTP_DISABLED, null, null);
     }
 
     /**

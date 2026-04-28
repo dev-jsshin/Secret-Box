@@ -7,6 +7,8 @@ import com.secretbox.auth.dto.PreLoginResponse;
 import com.secretbox.auth.dto.RefreshResponse;
 import com.secretbox.auth.dto.RegisterRequest;
 import com.secretbox.auth.dto.RegisterResponse;
+import com.secretbox.audit.domain.AuditAction;
+import com.secretbox.audit.service.AuditLogService;
 import com.secretbox.common.exception.ApiException;
 import com.secretbox.user.domain.User;
 import com.secretbox.user.repository.UserRepository;
@@ -26,6 +28,8 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.UUID;
@@ -39,6 +43,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final TwoFactorService twoFactorService;
+    private final AuditLogService auditLog;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
     @Value("${app.security.kdf.min-iterations}")
@@ -59,12 +64,17 @@ public class AuthService {
 
     private static final int DUMMY_SALT_LENGTH = 16;
 
+    /** 연속 실패 N회 이상이면 잠금 시작. */
+    private static final int LOCKOUT_THRESHOLD = 5;
+    /** 잠금 지속 시간. */
+    private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
+
     // ==========================================================
     // Register
     // ==========================================================
 
     @Transactional
-    public RegisterResponse register(RegisterRequest req) {
+    public RegisterResponse register(RegisterRequest req, String userAgent, String ipAddress) {
         validateKdfParams(req);
 
         if (userRepository.existsByEmail(req.email())) {
@@ -94,6 +104,7 @@ public class AuthService {
 
         User saved = userRepository.save(user);
         log.info("User registered: id={}, email={}", saved.getId(), saved.getEmail());
+        auditLog.log(saved.getId(), AuditAction.REGISTER, ipAddress, userAgent);
 
         return new RegisterResponse(
             saved.getId(),
@@ -152,6 +163,8 @@ public class AuthService {
         User user = userRepository.findByEmail(req.email())
             .orElseThrow(() -> invalidCredentials());
 
+        rejectIfLocked(user);
+
         boolean valid;
         try {
             valid = argon2.verify(user.getAuthHash(), req.authHash().toCharArray());
@@ -161,17 +174,48 @@ public class AuthService {
         }
 
         if (!valid) {
+            registerFailedAttempt(user, ipAddress, userAgent);
             throw invalidCredentials();
         }
 
-        // 2FA가 활성화돼있으면 protectedDek은 아직 안 주고 단명 토큰만 반환
+        resetFailures(user);
+
         if (user.isTwoFactorEnabled() && user.getTotpSecret() != null) {
             String token = jwtService.issueTwoFactorToken(user.getId());
             log.info("2FA required for login: user={}", user.getId());
             return LoginResponse.twoFactorRequired(token);
         }
 
+        auditLog.log(user.getId(), AuditAction.LOGIN_SUCCESS, ipAddress, userAgent);
         return issueFullSession(user, userAgent, ipAddress, deviceId, false);
+    }
+
+    private void rejectIfLocked(User user) {
+        Instant lockedUntil = user.getLockedUntil();
+        if (lockedUntil != null && lockedUntil.isAfter(Instant.now())) {
+            long secondsLeft = Duration.between(Instant.now(), lockedUntil).getSeconds();
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "ACCOUNT_LOCKED",
+                "연속 실패로 계정이 잠겼습니다. " + (secondsLeft / 60 + 1) + "분 후 다시 시도해주세요.");
+        }
+    }
+
+    private void registerFailedAttempt(User user, String ipAddress, String userAgent) {
+        int next = user.getFailedLoginCount() + 1;
+        user.setFailedLoginCount(next);
+        auditLog.log(user.getId(), AuditAction.LOGIN_FAIL, ipAddress, userAgent);
+        if (next >= LOCKOUT_THRESHOLD) {
+            user.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION));
+            log.warn("Account locked due to repeated failures: user={}, until={}",
+                user.getId(), user.getLockedUntil());
+            auditLog.log(user.getId(), AuditAction.ACCOUNT_LOCKED, ipAddress, userAgent);
+        }
+    }
+
+    private void resetFailures(User user) {
+        if (user.getFailedLoginCount() > 0 || user.getLockedUntil() != null) {
+            user.setFailedLoginCount(0);
+            user.setLockedUntil(null);
+        }
     }
 
     /**
@@ -186,10 +230,15 @@ public class AuthService {
 
         var verify = twoFactorService.verifyForLogin(userId, code);
         if (!verify.ok()) {
+            auditLog.log(userId, AuditAction.LOGIN_2FA_FAIL, ipAddress, userAgent);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_TOTP_CODE",
                 "코드가 올바르지 않습니다");
         }
 
+        auditLog.log(userId, AuditAction.LOGIN_2FA_SUCCESS, ipAddress, userAgent);
+        if (verify.recoveryUsed()) {
+            auditLog.log(userId, AuditAction.RECOVERY_USED, ipAddress, userAgent);
+        }
         return issueFullSession(user, userAgent, ipAddress, deviceId, verify.recoveryUsed());
     }
 
@@ -234,8 +283,11 @@ public class AuthService {
     }
 
     @Transactional
-    public void logout(String refreshToken) {
-        refreshTokenService.revoke(refreshToken);
+    public void logout(String refreshToken, String ipAddress, String userAgent) {
+        UUID userId = refreshTokenService.revokeAndReturnUserId(refreshToken);
+        if (userId != null) {
+            auditLog.log(userId, AuditAction.LOGOUT, ipAddress, userAgent);
+        }
     }
 
     private ApiException invalidCredentials() {

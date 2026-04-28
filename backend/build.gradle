@@ -38,6 +38,9 @@ dependencies {
     // Argon2 (서버 측: authHash를 한번 더 해시할 때 사용)
     implementation 'de.mkammerer:argon2-jvm:2.11'
 
+    // Rate limit — 인메모리 토큰 버킷 (Redis 불필요)
+    implementation 'com.bucket4j:bucket4j_jdk17-core:8.14.0'
+
     // Dev
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'

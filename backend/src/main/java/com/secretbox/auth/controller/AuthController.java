@@ -29,8 +29,15 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-        RegisterResponse body = authService.register(request);
+    public ResponseEntity<RegisterResponse> register(
+        @Valid @RequestBody RegisterRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        RegisterResponse body = authService.register(
+            request,
+            httpRequest.getHeader("User-Agent"),
+            clientIp(httpRequest)
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 
@@ -79,8 +86,15 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
-        authService.logout(request.refreshToken());
+    public ResponseEntity<Void> logout(
+        @Valid @RequestBody LogoutRequest request,
+        HttpServletRequest httpRequest
+    ) {
+        authService.logout(
+            request.refreshToken(),
+            clientIp(httpRequest),
+            httpRequest.getHeader("User-Agent")
+        );
         return ResponseEntity.noContent().build();
     }
 

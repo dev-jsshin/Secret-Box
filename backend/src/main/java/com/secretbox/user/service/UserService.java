@@ -1,5 +1,7 @@
 package com.secretbox.user.service;
 
+import com.secretbox.audit.domain.AuditAction;
+import com.secretbox.audit.service.AuditLogService;
 import com.secretbox.auth.repository.SessionRepository;
 import com.secretbox.auth.service.JwtService;
 import com.secretbox.auth.service.RefreshTokenService;
@@ -34,6 +36,7 @@ public class UserService {
     private final SessionRepository sessionRepository;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
+    private final AuditLogService auditLog;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
     @Value("${app.security.kdf.min-iterations}")
@@ -107,6 +110,10 @@ public class UserService {
         // 5) 모든 기존 세션 폐기
         int revoked = sessionRepository.revokeAllForUser(userId, Instant.now());
         log.info("Master password changed: user={}, sessions revoked={}", userId, revoked);
+        auditLog.log(userId, AuditAction.MASTER_PASSWORD_CHANGE, ipAddress, userAgent);
+        if (revoked > 0) {
+            auditLog.log(userId, AuditAction.ALL_SESSIONS_REVOKED, ipAddress, userAgent);
+        }
 
         // 6) 현재 요청을 위한 새 access + refresh 발급
         String accessToken = jwtService.issueAccessToken(userId, user.getEmail());
@@ -155,6 +162,7 @@ public class UserService {
         if (session.getRevokedAt() == null) {
             session.setRevokedAt(Instant.now());
             log.info("Session revoked: user={}, session={}", userId, sessionId);
+            auditLog.log(userId, AuditAction.SESSION_REVOKED, "session", sessionId.toString(), null, null);
         }
     }
 
@@ -174,6 +182,9 @@ public class UserService {
             }
         }
         log.info("Other sessions revoked: user={}, count={}", userId, count);
+        if (count > 0) {
+            auditLog.log(userId, AuditAction.OTHER_SESSIONS_REVOKED, null, null);
+        }
         return count;
     }
 

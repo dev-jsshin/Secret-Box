@@ -94,6 +94,14 @@ public class RefreshTokenService {
             .ifPresent(session -> session.setRevokedAt(Instant.now()));
     }
 
+    /** revoke + 해당 세션의 user id 반환 (감사 로그용). 세션이 없으면 null. */
+    @Transactional
+    public UUID revokeAndReturnUserId(String rawToken) {
+        var sessionOpt = sessionRepository.findByRefreshTokenHash(sha256(rawToken));
+        sessionOpt.ifPresent(session -> session.setRevokedAt(Instant.now()));
+        return sessionOpt.map(Session::getUserId).orElse(null);
+    }
+
     /** raw refresh token → 저장된 hash 형태로 변환 (세션 매칭용). */
     public String hashOf(String rawToken) {
         return sha256(rawToken);

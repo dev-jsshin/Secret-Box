@@ -11,6 +11,8 @@ import com.secretbox.user.dto.TwoFactorConfirmRequest;
 import com.secretbox.user.dto.TwoFactorEnableConfirmResponse;
 import com.secretbox.user.dto.TwoFactorInitResponse;
 import com.secretbox.user.dto.TwoFactorStatusResponse;
+import com.secretbox.audit.dto.AuditLogPageResponse;
+import com.secretbox.audit.service.AuditLogService;
 import com.secretbox.user.service.TwoFactorService;
 import com.secretbox.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +26,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
@@ -35,6 +38,7 @@ public class UserController {
 
     private final UserService userService;
     private final TwoFactorService twoFactorService;
+    private final AuditLogService auditLogService;
 
     @GetMapping("/me")
     public ResponseEntity<MeResponse> me(@AuthenticationPrincipal AuthenticatedUser user) {
@@ -118,6 +122,19 @@ public class UserController {
     ) {
         twoFactorService.disable(user.userId(), request.code());
         return ResponseEntity.noContent().build();
+    }
+
+    // ==========================================================
+    // 본인 활동 로그
+    // ==========================================================
+
+    @GetMapping("/me/activity")
+    public ResponseEntity<AuditLogPageResponse> myActivity(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "30") int size
+    ) {
+        return ResponseEntity.ok(auditLogService.listForUser(user.userId(), page, size));
     }
 
     public record MeResponse(String id, String email) {}

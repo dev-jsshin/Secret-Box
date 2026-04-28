@@ -1,5 +1,7 @@
 package com.secretbox.vault.service;
 
+import com.secretbox.audit.domain.AuditAction;
+import com.secretbox.audit.service.AuditLogService;
 import com.secretbox.common.exception.ApiException;
 import com.secretbox.vault.domain.VaultItem;
 import com.secretbox.vault.domain.VaultItemHistory;
@@ -27,6 +29,7 @@ public class VaultService {
 
     private final VaultItemRepository vaultItemRepository;
     private final VaultItemHistoryRepository historyRepository;
+    private final AuditLogService auditLog;
 
     @Transactional(readOnly = true)
     public List<VaultItemDto> list(UUID userId) {
@@ -45,6 +48,7 @@ public class VaultService {
             .build();
         VaultItem saved = vaultItemRepository.save(item);
         log.info("Vault item created: id={}, user={}", saved.getId(), userId);
+        auditLog.log(userId, AuditAction.ITEM_CREATE, "item", saved.getId().toString(), null, null);
         return VaultItemDto.from(saved);
     }
 
@@ -68,6 +72,7 @@ public class VaultService {
 
         item.setEncryptedData(decodeBase64(req.encryptedData(), "encryptedData"));
         item.setEncryptedIv(decodeBase64(req.encryptedIv(), "encryptedIv"));
+        auditLog.log(userId, AuditAction.ITEM_UPDATE, "item", item.getId().toString(), null, null);
 
         return VaultItemDto.from(item);
     }
@@ -77,6 +82,7 @@ public class VaultService {
         VaultItem item = findOwned(userId, itemId);
         item.setDeletedAt(Instant.now());
         log.info("Vault item soft-deleted: id={}, user={}", itemId, userId);
+        auditLog.log(userId, AuditAction.ITEM_DELETE, "item", itemId.toString(), null, null);
     }
 
     @Transactional(readOnly = true)

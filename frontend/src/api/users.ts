@@ -49,6 +49,24 @@ export interface TwoFactorEnableConfirmResponse {
   recoveryCode: string;   // 32자 long single-use kill switch — 한 번만 응답
 }
 
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  targetType?: string;
+  targetId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  createdAt: string;       // ISO
+}
+
+export interface AuditLogPage {
+  entries: AuditLogEntry[];
+  page: number;
+  size: number;
+  totalElements: number;
+  hasNext: boolean;
+}
+
 export const usersApi = {
   changePassword: (body: ChangePasswordRequest) =>
     apiFetch<ChangePasswordResponse>('/users/me/password', {
@@ -92,4 +110,11 @@ export const usersApi = {
       method: 'POST',
       body: JSON.stringify({ code }),
     }),
+
+  // ---------------- 활동 로그 ----------------
+  getActivity: (page: number = 0, size: number = 30) =>
+    apiFetch<AuditLogPage>(
+      `/users/me/activity?page=${page}&size=${size}`,
+      { method: 'GET' },
+    ),
 };

@@ -8,6 +8,7 @@ import FormField from '../components/FormField';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
 import AlertModal from '../components/AlertModal';
 import TwoFactorCard from '../components/TwoFactorCard';
+import ActivityCard from '../components/ActivityCard';
 import { scorePassword } from '../lib/passwordTools';
 
 import { authApi } from '../api/auth';
@@ -28,11 +29,12 @@ interface ErrorAlert {
   message?: string;
 }
 
-type SettingsTab = 'account' | 'security';
+type SettingsTab = 'account' | 'security' | 'activity';
 
 const TABS: { id: SettingsTab; label: string; sub: string }[] = [
-  { id: 'account',  label: '계정', sub: '이메일과 보관함 비밀번호' },
-  { id: 'security', label: '보안', sub: '잠금 · 2단계 인증 · 활성 세션' },
+  { id: 'account',  label: '계정',   sub: '이메일과 보관함 비밀번호' },
+  { id: 'security', label: '보안',   sub: '잠금 · 2단계 인증 · 활성 세션' },
+  { id: 'activity', label: '활동',   sub: '최근 인증·세션·항목 변경 내역' },
 ];
 
 export default function Settings() {
@@ -45,7 +47,9 @@ export default function Settings() {
   // URL ?tab=security 와 동기화 — 새로고침/공유 링크 보존
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const t = new URLSearchParams(location.search).get('tab');
-    return t === 'security' ? 'security' : 'account';
+    if (t === 'security') return 'security';
+    if (t === 'activity') return 'activity';
+    return 'account';
   });
 
   useEffect(() => {
@@ -393,6 +397,8 @@ export default function Settings() {
           )}
         </section>
         </>)}
+
+        {activeTab === 'activity' && <ActivityCard />}
 
         {activeTab === 'account' && (<>
         {/* 보관함 비밀번호 변경 */}

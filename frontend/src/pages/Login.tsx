@@ -51,6 +51,8 @@ function mapApiErrorToAlert(error: unknown): ErrorAlert {
       VALIDATION_ERROR: '입력값을 확인해주세요',
       TOO_MANY_ATTEMPTS: '잠시 후 다시 시도해주세요',
       USER_NOT_FOUND: '이메일 또는 비밀번호가 올바르지 않습니다',
+      ACCOUNT_LOCKED: '계정이 일시적으로 잠겼습니다',
+      RATE_LIMITED: '요청이 너무 많습니다',
     };
     return {
       title: titleByCode[error.code] ?? '로그인에 실패했습니다',

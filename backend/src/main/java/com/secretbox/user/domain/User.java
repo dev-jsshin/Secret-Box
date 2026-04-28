@@ -62,6 +62,14 @@ public class User {
     @Column(name = "totp_recovery_hash", length = 128)
     private String totpRecoveryHash;
 
+    /** 연속 실패 로그인 횟수 — 성공 시 0으로 리셋. */
+    @Column(name = "failed_login_count", nullable = false)
+    private int failedLoginCount;
+
+    /** 이 시각까지 로그인 거부. NULL이면 잠금 없음. */
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
     @Column(name = "email_verified_at")
     private Instant emailVerifiedAt;
 
