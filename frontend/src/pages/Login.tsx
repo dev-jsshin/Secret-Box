@@ -329,25 +329,42 @@ export default function Login() {
         )}
 
         {pending2fa && (
-          <form className="login__form" onSubmit={handleTwoFactorSubmit} noValidate>
-            <p className="login__welcome rise delay-2">
-              <span className="login__welcomeDot" aria-hidden />
-              비밀번호 확인됨. authenticator의 6자리 코드를 입력해주세요.
-            </p>
+          <form className="login__form login__form--2fa" onSubmit={handleTwoFactorSubmit} noValidate>
+            <div className="login__2faStep rise delay-2">
+              <div className="login__2faStepIcon" aria-hidden>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
+                     stroke="currentColor" strokeWidth="1.6"
+                     strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+                </svg>
+              </div>
+              <div className="login__2faStepBody">
+                <div className="login__2faStepLabel">2단계 인증</div>
+                <div className="login__2faStepText">
+                  authenticator 앱의 <strong>6자리 코드</strong> 또는 발급받은
+                  <strong> recovery code</strong>를 입력하세요.
+                </div>
+                <div className="login__2faStepHint">
+                  {pending2fa.email}
+                </div>
+              </div>
+            </div>
+
             <div className="rise delay-3">
               <FormField
                 id="totp-code"
                 type="text"
-                inputMode="numeric"
+                inputMode="text"
                 autoComplete="one-time-code"
                 autoFocus
-                label="2FA 코드 (또는 recovery code)"
+                label="6자리 코드 또는 복구 코드"
                 placeholder="000000"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 error={codeError}
               />
             </div>
+
             <div className="rise delay-4">
               <Button
                 type="submit"
@@ -357,14 +374,13 @@ export default function Login() {
                 잠금 해제
               </Button>
             </div>
+
             <button
               type="button"
-              className="login__explainLink"
+              className="login__cancel2fa rise delay-5"
               onClick={handleCancel2fa}
-              style={{ marginTop: '0.6rem' }}
             >
-              <span className="login__explainArrow" aria-hidden>←</span>
-              <span>다른 계정으로 로그인</span>
+              ← 다른 계정으로 로그인
             </button>
           </form>
         )}

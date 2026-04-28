@@ -55,6 +55,28 @@ export default function TwoFactorCard({ onError }: TwoFactorCardProps) {
     }
   }
 
+  function handleDownloadRecovery() {
+    if (!recoveryCode) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const content =
+      `SecretBox — 2FA Recovery Code\n` +
+      `발급일: ${today}\n\n` +
+      `Recovery code:\n${recoveryCode}\n\n` +
+      `주의:\n` +
+      `- 이 코드는 한 번만 사용 가능합니다.\n` +
+      `- 사용 시 2FA가 자동 비활성화됩니다.\n` +
+      `- 안전한 곳에 보관하세요 (인쇄, 패스워드 매니저 등).\n`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `secretbox-recovery-${today}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   const initMutation = useMutation({
     mutationFn: () => usersApi.initTwoFactor(),
     onSuccess: (data) => setEnrollInit(data),
@@ -145,55 +167,61 @@ export default function TwoFactorCard({ onError }: TwoFactorCardProps) {
   return (
     <>
       <section className="settings__card rise delay-3">
-        <h2 className="settings__cardTitle">로그인 2단계 인증 (2FA)</h2>
-        <div className="settings__notice">
-          <ShieldIcon />
-          <span>
-            마스터 비밀번호 외에 authenticator 앱의 6자리 코드를 추가로 요구합니다.
-            <br />
-            비밀번호가 털려도 코드 없이는 들어올 수 없어요.
-          </span>
-        </div>
+        <h2 className="settings__cardTitle">로그인 2단계 인증</h2>
 
         {statusQuery.isPending ? (
           <p className="tfc__line">상태 확인 중…</p>
-        ) : enabled ? (
-          <>
-            <div className="tfc__statusRow">
-              <span className="tfc__badge tfc__badge--on">활성</span>
-              <span className="tfc__statusText">
-                authenticator 코드 또는 recovery code로 로그인
-              </span>
-            </div>
-            <button
-              type="button"
-              className="tfc__btn tfc__btn--danger"
-              onClick={() => {
-                setDisableOpen(true);
-                setDisableCode('');
-                setDisableCodeError('');
-              }}
-            >
-              2FA 비활성화
-            </button>
-          </>
         ) : (
           <>
-            <div className="tfc__statusRow">
-              <span className="tfc__badge tfc__badge--off">비활성</span>
-              <span className="tfc__statusText">
-                authenticator 앱(Google/MS Authenticator 등)이 필요합니다
-              </span>
+            <div className="tfc__status">
+              <span className={'tfc__statusDot ' + (enabled ? 'is-on' : 'is-off')} />
+              <div className="tfc__statusBody">
+                <div className="tfc__statusTitle">
+                  {enabled ? '활성화됨' : '비활성 — 보호 안 됨'}
+                </div>
+                <div className="tfc__statusDesc">
+                  {enabled
+                    ? 'authenticator 6자리 코드 또는 recovery code로 보호 중'
+                    : '마스터 비밀번호 외 추가 요소 없음. 비밀번호 누설 시 노출 위험'}
+                </div>
+              </div>
             </div>
-            <button
-              type="button"
-              className="tfc__btn tfc__btn--primary"
-              onClick={handleStartEnroll}
-            >
-              2FA 활성화
-            </button>
+
+            <p className="tfc__explainer">
+              authenticator 앱(Google/MS Authenticator 등)이 30초마다 새 6자리 코드를
+              만들고, 로그인 시 비밀번호와 함께 그 코드를 요구합니다. 비밀번호가 털려도
+              코드 없이는 들어올 수 없어요.
+            </p>
+
+            {!enabled && (
+              <button
+                type="button"
+                className="tfc__btn tfc__btn--primary"
+                onClick={handleStartEnroll}
+              >
+                2FA 활성화
+              </button>
+            )}
+
+            {enabled && (
+              <div className="tfc__dangerZone">
+                <div className="tfc__dangerLabel">위험구역</div>
+                <button
+                  type="button"
+                  className="tfc__btn tfc__btn--danger"
+                  onClick={() => {
+                    setDisableOpen(true);
+                    setDisableCode('');
+                    setDisableCodeError('');
+                  }}
+                >
+                  2FA 비활성화
+                </button>
+              </div>
+            )}
           </>
         )}
+
       </section>
 
       {/* Enrollment 모달 — 3단계: secret 표시 → 코드 확인 → recovery 표시 */}
@@ -204,28 +232,48 @@ export default function TwoFactorCard({ onError }: TwoFactorCardProps) {
       >
         {recoveryCode ? (
           <div className="tfc__panel">
-            <p className="tfc__panelLede">
-              <strong>아래 recovery code를 지금 안전한 곳에 저장하세요.</strong>
-              <br />
-              한 번만 표시됩니다. 폰을 잃어버려서 authenticator를 못 쓰게 됐을 때
-              이걸로 한 번 로그인할 수 있어요.
-            </p>
+            <div className="tfc__hero">
+              <div className="tfc__heroIcon"><CheckIcon /></div>
+              <div>
+                <div className="tfc__heroTitle">2FA가 활성화되었습니다</div>
+                <div className="tfc__heroSub">
+                  아래 recovery code를 지금 저장하세요. 다시는 표시되지 않습니다.
+                </div>
+              </div>
+            </div>
+
             <div className="tfc__recoveryBox">
-              <code className="tfc__recoveryCode">{recoveryCode}</code>
+              <div className="tfc__recoveryLabel">RECOVERY CODE</div>
+              <code className="tfc__recoveryCode">{formatRecovery(recoveryCode)}</code>
             </div>
-            <div className="tfc__noticeWarn">
-              ⚠ 사용 즉시 2FA가 자동 비활성화됩니다 — 그 후엔 다시 활성화해서 새 코드를 받으셔야 해요.
-            </div>
-            <div className="tfc__panelActions">
+
+            <div className="tfc__recoveryActions">
               <button
                 type="button"
                 className={
-                  'tfc__btn' + (copiedTarget === 'recovery' ? ' tfc__btn--copied' : '')
+                  'tfc__chip' + (copiedTarget === 'recovery' ? ' is-copied' : '')
                 }
                 onClick={() => handleCopy('recovery', recoveryCode)}
               >
-                {copiedTarget === 'recovery' ? '복사됨 ✓' : '복사'}
+                {copiedTarget === 'recovery' ? <CheckSmallIcon /> : <CopySmallIcon />}
+                {copiedTarget === 'recovery' ? '복사됨' : '복사'}
               </button>
+              <button
+                type="button"
+                className="tfc__chip"
+                onClick={handleDownloadRecovery}
+              >
+                <DownloadSmallIcon />
+                .txt로 저장
+              </button>
+            </div>
+
+            <div className="tfc__noticeWarn">
+              사용 즉시 2FA가 자동 비활성화됩니다 (kill switch).
+              그 후엔 다시 활성화해서 새 코드를 받아야 해요.
+            </div>
+
+            <div className="tfc__panelActions">
               <Button onClick={handleEnrollClose}>저장 완료</Button>
             </div>
           </div>
@@ -241,8 +289,8 @@ export default function TwoFactorCard({ onError }: TwoFactorCardProps) {
                 <QRCode
                   value={enrollInit.otpauthUri}
                   size={168}
-                  bgColor="transparent"
-                  fgColor="#EBE2D0"
+                  bgColor="#FFFFFF"
+                  fgColor="#0A0E1A"
                   level="M"
                 />
               </div>
@@ -364,4 +412,53 @@ function ShieldIcon() {
       <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
     </svg>
   );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+         stroke="currentColor" strokeWidth="2"
+         strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function CheckSmallIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+         stroke="currentColor" strokeWidth="1.8"
+         strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
+function CopySmallIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+    </svg>
+  );
+}
+
+function DownloadSmallIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
+/** 32자 recovery를 4자씩 8그룹으로 — 시각 그룹화. 클립보드 복사할 땐 원본 그대로. */
+function formatRecovery(code: string): string {
+  if (!code) return '';
+  return code.match(/.{1,4}/g)?.join(' ') ?? code;
 }

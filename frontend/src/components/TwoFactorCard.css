@@ -4,53 +4,95 @@
   color: var(--ink-muted);
 }
 
-.tfc__statusRow {
+/* ---------- 상태 인디케이터 (Stripe 스타일 dot + 텍스트) ---------- */
+.tfc__status {
   display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 0.85rem 0.95rem;
+  background: rgba(232, 226, 207, 0.025);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
 }
 
-.tfc__badge {
-  display: inline-flex;
-  align-items: center;
+.tfc__statusDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.tfc__statusDot.is-on {
+  background: var(--success);
+  box-shadow: 0 0 0 4px rgba(132, 168, 126, 0.15);
+}
+
+.tfc__statusDot.is-off {
+  background: var(--ink-faint);
+  box-shadow: 0 0 0 4px rgba(232, 226, 207, 0.04);
+}
+
+.tfc__statusBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tfc__statusTitle {
   font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  padding: 3px 9px;
-  border-radius: 999px;
-  border: 1px solid;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ink-primary);
 }
 
-.tfc__badge--on {
-  color: var(--success);
-  border-color: rgba(132, 168, 126, 0.5);
-  background: rgba(132, 168, 126, 0.1);
-}
-
-.tfc__badge--off {
+.tfc__statusDesc {
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
   color: var(--ink-muted);
-  border-color: var(--line-strong);
-  background: transparent;
+  line-height: 1.5;
 }
 
-.tfc__statusText {
+/* ---------- 본문 설명 ---------- */
+.tfc__explainer {
   font-family: var(--font-sans);
   font-size: 0.85rem;
+  line-height: 1.6;
   color: var(--ink-secondary);
+  margin: 0.15rem 0;
 }
 
-/* 카드 액션 버튼 — 높이는 sb-button과 완전 매칭.
-   sb-button 내부의 1rem 화살표 span이 line-box를 키우므로, 여기선 min-height로 동일 높이 강제.
-   border 대신 inset box-shadow로 테두리 그려 layout box 크기 맞춤. */
+/* ---------- 위험구역 ---------- */
+.tfc__dangerZone {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: 0.4rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line-subtle);
+}
+
+.tfc__dangerLabel {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+/* ---------- 메인 액션 버튼 (sb-button과 같은 박스) ---------- */
 .tfc__btn {
   align-self: flex-start;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 3.25rem;   /* sb-button의 padding(0.85*2) + content(1rem * 1.55) 과 동일 */
+  min-height: 3.25rem;
   background: transparent;
   border: 0;
   border-radius: 8px;
@@ -106,7 +148,7 @@
   box-shadow: inset 0 0 0 1px var(--success);
 }
 
-/* 모달 내부 패널 */
+/* ---------- 모달 패널 ---------- */
 .tfc__panel {
   display: flex;
   flex-direction: column;
@@ -133,44 +175,51 @@
   margin-top: 0.4rem;
 }
 
-/* 모달 내 sb-button은 자연 너비로 (기본 width:100% 덮어씀) */
 .tfc__panelActions .sb-button {
   width: auto;
   min-width: 140px;
 }
 
-/* QR 코드 박스 */
-.tfc__qrBox {
+/* ---------- 활성화 완료 hero (체크 + 큰 메시지) ---------- */
+.tfc__hero {
   display: flex;
-  justify-content: center;
-}
-
-.tfc__qrFrame {
-  display: inline-flex;
-  padding: 0.85rem;
-  background: rgba(232, 226, 207, 0.04);
-  border: 1px solid var(--line-default);
+  align-items: flex-start;
+  gap: 0.7rem;
+  padding: 1rem 1rem 0.95rem;
+  background: rgba(132, 168, 126, 0.06);
+  border: 1px solid rgba(132, 168, 126, 0.3);
   border-radius: 10px;
 }
 
-.tfc__qrFrame svg {
-  display: block;
+.tfc__heroIcon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(132, 168, 126, 0.18);
+  color: var(--success);
 }
 
-/* 두 코드 입력 — 가로 그리드 */
-.tfc__codePair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.7rem;
+.tfc__heroTitle {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
 }
 
-@media (max-width: 480px) {
-  .tfc__codePair {
-    grid-template-columns: 1fr;
-  }
+.tfc__heroSub {
+  font-family: var(--font-sans);
+  font-size: 0.83rem;
+  color: var(--ink-secondary);
+  line-height: 1.55;
+  margin-top: 0.15rem;
 }
 
-/* secret 표시 박스 */
+/* ---------- secret 표시 박스 (등록 단계) ---------- */
 .tfc__secretBox {
   display: flex;
   align-items: center;
@@ -231,6 +280,7 @@
   background: rgba(132, 168, 126, 0.12);
 }
 
+/* ---------- otpauth URI ---------- */
 .tfc__details {
   font-family: var(--font-sans);
   font-size: 0.8rem;
@@ -257,36 +307,112 @@
   user-select: all;
 }
 
-/* recovery code — 단일 long code 표시 */
-.tfc__recoveryBox {
+/* ---------- QR ---------- */
+.tfc__qrBox {
   display: flex;
   justify-content: center;
-  padding: 1.1rem 0.85rem;
-  background: rgba(212, 146, 74, 0.06);
-  border: 1px solid rgba(212, 146, 74, 0.35);
+}
+
+.tfc__qrFrame {
+  display: inline-flex;
+  padding: 0.95rem;
+  background: #FFFFFF;     /* 스캐너 인식률 위해 항상 흰색 */
+  border: 1px solid var(--line-default);
   border-radius: 10px;
+}
+
+.tfc__qrFrame svg {
+  display: block;
+}
+
+/* ---------- 코드 입력 페어 ---------- */
+.tfc__codePair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.7rem;
+}
+
+@media (max-width: 480px) {
+  .tfc__codePair {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- recovery code 디스플레이 (대형, 명확) ---------- */
+.tfc__recoveryBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.1rem 1rem;
+  background: rgba(232, 226, 207, 0.04);
+  border: 1px solid var(--line-default);
+  border-radius: 10px;
+}
+
+.tfc__recoveryLabel {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--ink-muted);
+  text-align: center;
 }
 
 .tfc__recoveryCode {
   font-family: var(--font-mono);
-  font-size: 1.05rem;
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.16em;
   color: var(--amber);
   text-align: center;
+  line-height: 1.6;
   word-break: break-all;
   user-select: all;
-  line-height: 1.45;
 }
 
-/* kill-switch 경고 */
+/* recovery 보조 액션 — 칩 형태 */
+.tfc__recoveryActions {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.tfc__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease), background 180ms var(--ease);
+}
+
+.tfc__chip:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.tfc__chip.is-copied {
+  border-color: rgba(132, 168, 126, 0.5);
+  color: var(--success);
+  background: rgba(132, 168, 126, 0.08);
+}
+
+/* ---------- 경고 노티스 ---------- */
 .tfc__noticeWarn {
   font-family: var(--font-sans);
   font-size: 0.82rem;
-  line-height: 1.55;
-  padding: 0.6rem 0.8rem;
+  line-height: 1.6;
+  padding: 0.65rem 0.85rem;
   background: rgba(217, 168, 97, 0.06);
   border: 1px solid rgba(217, 168, 97, 0.28);
   border-radius: 6px;
   color: var(--ink-secondary);
+  text-align: center;
 }
