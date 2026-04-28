@@ -43,6 +43,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final TwoFactorService twoFactorService;
+    private final LoginAttemptService loginAttemptService;
     private final AuditLogService auditLog;
     private final Argon2 argon2 = Argon2Factory.create(Argon2Factory.Argon2Types.ARGON2id);
 
@@ -63,11 +64,6 @@ public class AuthService {
     private static final int SERVER_ARGON2_PARALLELISM = 4;
 
     private static final int DUMMY_SALT_LENGTH = 16;
-
-    /** 연속 실패 N회 이상이면 잠금 시작. */
-    private static final int LOCKOUT_THRESHOLD = 5;
-    /** 잠금 지속 시간. */
-    private static final Duration LOCKOUT_DURATION = Duration.ofMinutes(15);
 
     // ==========================================================
     // Register
@@ -174,11 +170,18 @@ public class AuthService {
         }
 
         if (!valid) {
-            registerFailedAttempt(user, ipAddress, userAgent);
-            throw invalidCredentials();
+            int newCount = loginAttemptService.recordFailure(user.getId(), ipAddress, userAgent);
+            int remaining = LoginAttemptService.LOCKOUT_THRESHOLD - newCount;
+            if (remaining <= 0) {
+                long minutes = LoginAttemptService.LOCKOUT_DURATION.toMinutes();
+                throw new ApiException(HttpStatus.UNAUTHORIZED, "ACCOUNT_LOCKED",
+                    "연속 실패로 계정이 " + minutes + "분간 잠겼습니다.\n잠시 후 다시 시도해주세요.");
+            }
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS",
+                "이메일 또는 비밀번호가 올바르지 않습니다.\n(남은 시도: " + remaining + "회)");
         }
 
-        resetFailures(user);
+        loginAttemptService.resetFailures(user.getId());
 
         if (user.isTwoFactorEnabled() && user.getTotpSecret() != null) {
             String token = jwtService.issueTwoFactorToken(user.getId());
@@ -195,28 +198,10 @@ public class AuthService {
         if (lockedUntil != null && lockedUntil.isAfter(Instant.now())) {
             long secondsLeft = Duration.between(Instant.now(), lockedUntil).getSeconds();
             throw new ApiException(HttpStatus.UNAUTHORIZED, "ACCOUNT_LOCKED",
-                "연속 실패로 계정이 잠겼습니다. " + (secondsLeft / 60 + 1) + "분 후 다시 시도해주세요.");
+                "연속 실패로 계정이 잠겼습니다.\n" + (secondsLeft / 60 + 1) + "분 후 다시 시도해주세요.");
         }
     }
 
-    private void registerFailedAttempt(User user, String ipAddress, String userAgent) {
-        int next = user.getFailedLoginCount() + 1;
-        user.setFailedLoginCount(next);
-        auditLog.log(user.getId(), AuditAction.LOGIN_FAIL, ipAddress, userAgent);
-        if (next >= LOCKOUT_THRESHOLD) {
-            user.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION));
-            log.warn("Account locked due to repeated failures: user={}, until={}",
-                user.getId(), user.getLockedUntil());
-            auditLog.log(user.getId(), AuditAction.ACCOUNT_LOCKED, ipAddress, userAgent);
-        }
-    }
-
-    private void resetFailures(User user) {
-        if (user.getFailedLoginCount() > 0 || user.getLockedUntil() != null) {
-            user.setFailedLoginCount(0);
-            user.setLockedUntil(null);
-        }
-    }
 
     /**
      * 2FA 2단계 — twoFactorToken 검증 + TOTP/recovery 코드 검증 → 풀 세션 발급.

@@ -119,7 +119,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         Map<String, Object> body = Map.of(
             "error", Map.of(
                 "code", "RATE_LIMITED",
-                "message", "요청이 너무 많습니다. " + retryAfterSeconds + "초 후 다시 시도해주세요.",
+                "message", "요청이 너무 많습니다.\n" + retryAfterSeconds + "초 후 다시 시도해주세요.",
                 "retryAfterSeconds", retryAfterSeconds
             )
         );
