@@ -9,12 +9,14 @@ import './ActivityCard.css';
  * 본인 활동 로그 카드 — Stripe / Linear 스타일의 깔끔한 피드.
  * 날짜 묶음 + 액션별 아이콘 칩(좌측) + 시간 우측 정렬 + 메타 작은 mono.
  */
+const PAGE_SIZE = 5;
+
 export default function ActivityCard() {
   const [page, setPage] = useState(0);
 
   const query = useQuery({
     queryKey: ['user-activity', page],
-    queryFn: () => usersApi.getActivity(page, 30),
+    queryFn: () => usersApi.getActivity(page, PAGE_SIZE),
     placeholderData: (prev) => prev,
   });
 

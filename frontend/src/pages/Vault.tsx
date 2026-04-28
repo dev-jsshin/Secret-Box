@@ -18,10 +18,19 @@ import {
 import { vaultApi } from '../api/vault';
 import { ApiError, getRefreshToken, setAccessToken, setRefreshToken } from '../api/client';
 import { authApi } from '../api/auth';
-import { base64ToBytes } from '../crypto/base64';
-import { decryptJson } from '../crypto/cipher';
+import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
+import { decryptJson, encryptJson } from '../crypto/cipher';
 import { useSessionStore } from '../store/session';
 import type { DecryptedVaultItem, VaultItemPlaintext } from '../types/vault';
+
+type SortMode = 'favoriteUpdated' | 'name' | 'updated' | 'created';
+
+const SORT_LABELS: Record<SortMode, string> = {
+  favoriteUpdated: '즐겨찾기 우선',
+  name: '이름순',
+  updated: '최근 수정순',
+  created: '최근 추가순',
+};
 
 import './Vault.css';
 
@@ -45,6 +54,7 @@ export default function Vault() {
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('favoriteUpdated');
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<DecryptedVaultItem | null>(null);
   const [historyOf, setHistoryOf] = useState<DecryptedVaultItem | null>(null);
@@ -153,8 +163,28 @@ export default function Vault() {
         || CATEGORY_LABELS[i.plaintext.category].includes(q),
       );
     }
-    return list;
-  }, [items, search, activeCategory]);
+    // 정렬 — 원본 배열을 직접 변형하지 않도록 복사
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      switch (sortMode) {
+        case 'name':
+          return (a.plaintext.alias || a.plaintext.name)
+            .localeCompare(b.plaintext.alias || b.plaintext.name, 'ko');
+        case 'updated':
+          return b.updatedAt.localeCompare(a.updatedAt);
+        case 'created':
+          return b.createdAt.localeCompare(a.createdAt);
+        case 'favoriteUpdated':
+        default: {
+          const fa = a.plaintext.favorite ? 1 : 0;
+          const fb = b.plaintext.favorite ? 1 : 0;
+          if (fa !== fb) return fb - fa;       // 즐겨찾기 먼저
+          return b.updatedAt.localeCompare(a.updatedAt);
+        }
+      }
+    });
+    return sorted;
+  }, [items, search, activeCategory, sortMode]);
 
   async function handleCopy(item: DecryptedVaultItem) {
     try {
@@ -201,6 +231,33 @@ export default function Vault() {
       });
     }
   }
+
+  /**
+   * 즐겨찾기 토글 — 항목 plaintext에 favorite 필드만 바꿔 재암호화 후 update.
+   * 모달 안 거치는 가벼운 in-place 액션. 버전 충돌 시 무시 (다음 동기화에서 갱신).
+   */
+  const favoriteMutation = useMutation({
+    mutationFn: async (item: DecryptedVaultItem) => {
+      if (!dek) throw new Error('NO_DEK');
+      const newPlaintext: VaultItemPlaintext = {
+        ...item.plaintext,
+        favorite: !item.plaintext.favorite,
+      };
+      const { ciphertext, iv } = await encryptJson(dek, newPlaintext);
+      return vaultApi.update(item.id, {
+        encryptedData: bytesToBase64(ciphertext),
+        encryptedIv: bytesToBase64(iv),
+        expectedVersion: item.version,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['vault-items'] });
+    },
+    onError: (error) => {
+      const msg = error instanceof ApiError ? error.message : '즐겨찾기 변경 실패';
+      setErrorAlert({ title: '오류', message: msg });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => vaultApi.delete(id),
@@ -312,6 +369,17 @@ export default function Vault() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="이름·아이디·카테고리로 검색"
           />
+          <select
+            className="vault__sort"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            title="정렬"
+            aria-label="정렬 순서"
+          >
+            {Object.entries(SORT_LABELS).map(([k, label]) => (
+              <option key={k} value={k}>{label}</option>
+            ))}
+          </select>
           {hasAnyTotp && (
             <button
               type="button"
@@ -411,6 +479,20 @@ export default function Vault() {
                     />
                   )}
                   <div className="vault__cardActions">
+                    <button
+                      type="button"
+                      className={
+                        'vault__cardAction vault__cardAction--star'
+                        + (item.plaintext.favorite ? ' is-on' : '')
+                      }
+                      onClick={() => favoriteMutation.mutate(item)}
+                      disabled={favoriteMutation.isPending}
+                      title={item.plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
+                      aria-label={item.plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
+                      aria-pressed={!!item.plaintext.favorite}
+                    >
+                      <StarIcon filled={!!item.plaintext.favorite} />
+                    </button>
                     {item.plaintext.url && (
                       <a
                         className="vault__cardAction"
@@ -532,6 +614,17 @@ export default function Vault() {
 }
 
 // ---------- inline icons ----------
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16"
+         fill={filled ? 'currentColor' : 'none'}
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 function EyeIcon() {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill="none"
