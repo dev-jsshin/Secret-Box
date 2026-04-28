@@ -178,3 +178,57 @@
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- responsive ---------- */
+@media (max-width: 640px) {
+  .ac__feed {
+    gap: 0.85rem;
+  }
+
+  .ac__entry {
+    padding: 0.55rem 0.3rem;
+    gap: 0.6rem;
+  }
+
+  .ac__icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+  }
+
+  .ac__icon svg {
+    width: 13px;
+    height: 13px;
+  }
+
+  .ac__action {
+    font-size: 0.85rem;
+  }
+
+  .ac__row {
+    gap: 0.45rem;
+  }
+
+  .ac__time {
+    font-size: 10.5px;
+  }
+
+  .ac__meta {
+    font-size: 10.5px;
+  }
+
+  .ac__pager {
+    margin-top: 0.7rem;
+    padding-top: 0.55rem;
+  }
+
+  .ac__pageBtn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.78rem;
+    min-height: 36px;
+  }
+
+  .ac__pageLabel {
+    font-size: 10.5px;
+  }
+}

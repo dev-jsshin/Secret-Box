@@ -292,7 +292,7 @@ export default function Login() {
   }
 
   return (
-    <div className="page">
+    <div className="page page--auth">
       <main className="login">
         <section className="login__brand rise delay-1">
           <span className="login__halo" aria-hidden />
@@ -321,6 +321,7 @@ export default function Login() {
           </button>
         </section>
 
+        <div className="login__center">
         {state.justRegistered && !pending2fa && (
           <p className="login__welcome rise delay-2">
             <span className="login__welcomeDot" aria-hidden />
@@ -445,6 +446,7 @@ export default function Login() {
           </Link>
         </p>
         )}
+        </div>
 
         <footer className="login__foot rise delay-6">
           <p className="login__system">

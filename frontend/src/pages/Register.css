@@ -2,9 +2,22 @@
   width: 100%;
   max-width: 420px;
   margin: 0 auto;
+  flex: 1;                     /* .page--auth(stretch)에서 viewport 높이를 채움 */
   display: flex;
   flex-direction: column;
-  gap: 1.3rem;
+  gap: 1.1rem;
+  padding: clamp(1.2rem, 4vh, 2rem) clamp(1.25rem, 4vw, 2rem);
+  box-sizing: border-box;
+}
+
+/* 중앙 영역 — brand 아래, footer 위. 세로 가운데 정렬 */
+.register__center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 0;
 }
 
 /* ---------- brand block (halo + logo + title) ---------- */
@@ -204,15 +217,44 @@
 }
 
 /* ---------- responsive ---------- */
-@media (max-width: 480px) {
+@media (max-width: 640px) {
   .register {
     gap: 1.1rem;
   }
+
   .register__title {
-    font-size: 1.5rem;
+    font-size: clamp(1.35rem, 6vw, 1.6rem);
+    line-height: 1.25;
   }
+
   .register__halo {
     width: 220px;
     height: 220px;
+  }
+
+  .register__lede,
+  .register__sub {
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+
+  .register__form {
+    gap: 0.85rem;
+  }
+
+  .register__system {
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+  }
+
+  .register__credit {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 360px) {
+  .register__halo {
+    width: 180px;
+    height: 180px;
   }
 }

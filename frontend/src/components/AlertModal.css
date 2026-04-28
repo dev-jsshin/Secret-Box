@@ -176,3 +176,29 @@
     animation: none !important;
   }
 }
+
+/* ---------- responsive ---------- */
+@media (max-width: 640px) {
+  .sb-alert {
+    padding: 0.85rem;
+  }
+
+  .sb-alert__card {
+    padding: 1.4rem 1.2rem 1.1rem;
+    gap: 0.6rem;
+    border-radius: 12px;
+  }
+
+  .sb-alert__title {
+    font-size: 1rem;
+  }
+
+  .sb-alert__message {
+    font-size: 0.85rem;
+  }
+
+  /* confirm 모드: 두 버튼 가로 배치 — 모바일에서도 가로 유지 (둘 다 짧음) */
+  .sb-alert__actions {
+    max-width: none;
+  }
+}

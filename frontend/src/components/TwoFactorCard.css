@@ -332,12 +332,6 @@
   gap: 0.7rem;
 }
 
-@media (max-width: 480px) {
-  .tfc__codePair {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* ---------- recovery code 디스플레이 (대형, 명확) ---------- */
 .tfc__recoveryBox {
   display: flex;
@@ -415,4 +409,150 @@
   border-radius: 6px;
   color: var(--ink-secondary);
   text-align: center;
+}
+
+/* ====================================================================
+   Responsive
+   ==================================================================== */
+@media (max-width: 640px) {
+  /* 카드 안 status 박스 */
+  .tfc__status {
+    padding: 0.7rem 0.8rem;
+    gap: 0.6rem;
+  }
+
+  .tfc__statusTitle {
+    font-size: 0.88rem;
+  }
+
+  .tfc__statusDesc {
+    font-size: 0.78rem;
+  }
+
+  .tfc__explainer {
+    font-size: 0.83rem;
+  }
+
+  /* 액션 버튼 — 풀너비로 (좁은 화면에선 자연스러움) */
+  .tfc__btn {
+    width: 100%;
+    align-self: stretch;
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+  }
+
+  .tfc__dangerZone {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  /* 모달 내부 패널 */
+  .tfc__panel {
+    gap: 0.7rem;
+  }
+
+  .tfc__panelLede {
+    font-size: 0.85rem;
+  }
+
+  /* 두 코드 입력 — 한 줄에 두 개는 너무 좁음 → 위/아래 */
+  .tfc__codePair {
+    grid-template-columns: 1fr;
+  }
+
+  /* QR 프레임 — 화면에 맞게 살짝 줄임 */
+  .tfc__qrFrame {
+    padding: 0.75rem;
+  }
+
+  .tfc__qrFrame svg {
+    width: 148px;
+    height: 148px;
+  }
+
+  /* secret 박스 — 라벨이 옆에 있으면 secret이 너무 좁아짐 → 세로 stack */
+  .tfc__secretBox {
+    flex-wrap: wrap;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .tfc__secret {
+    flex-basis: 100%;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 0.2rem 0;
+    order: 1;
+  }
+
+  .tfc__secretLabel {
+    order: 0;
+    flex: 1;
+  }
+
+  .tfc__copyBtn {
+    order: 0;
+  }
+
+  /* recovery hero */
+  .tfc__hero {
+    padding: 0.85rem;
+    gap: 0.6rem;
+  }
+
+  .tfc__heroIcon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .tfc__heroTitle {
+    font-size: 0.9rem;
+  }
+
+  .tfc__heroSub {
+    font-size: 0.8rem;
+  }
+
+  /* recovery code — 32자가 한 줄에 안 들어감. group 단위로 wrap되도록 */
+  .tfc__recoveryBox {
+    padding: 0.95rem 0.8rem;
+  }
+
+  .tfc__recoveryCode {
+    font-size: 0.92rem;
+    letter-spacing: 0.12em;
+    line-height: 1.7;
+  }
+
+  .tfc__recoveryActions {
+    flex-wrap: wrap;
+  }
+
+  /* 모달 액션 버튼 — sb-button을 풀너비로, 세로 정렬 */
+  .tfc__panelActions {
+    flex-direction: column-reverse;     /* 주 액션을 위, 취소를 아래로 (모바일 친화) */
+    gap: 0.5rem;
+  }
+
+  .tfc__panelActions .sb-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tfc__panelActions .tfc__btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .tfc__qrFrame svg {
+    width: 132px;
+    height: 132px;
+  }
+
+  .tfc__recoveryCode {
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+  }
 }

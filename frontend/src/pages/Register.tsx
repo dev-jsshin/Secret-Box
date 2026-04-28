@@ -163,7 +163,7 @@ export default function Register() {
   }
 
   return (
-    <div className="page">
+    <div className="page page--auth">
       <main className="register">
         <section className="register__brand rise delay-1">
           <span className="register__halo" aria-hidden />
@@ -173,6 +173,7 @@ export default function Register() {
           </h1>
         </section>
 
+        <div className="register__center">
         <form className="register__form" onSubmit={handleSubmit} noValidate>
           <div className="rise delay-2">
             <FormField
@@ -255,6 +256,7 @@ export default function Register() {
             로그인 →
           </Link>
         </p>
+        </div>
 
         <footer className="register__foot rise delay-7">
           <p className="register__system">

@@ -66,3 +66,17 @@
   background: var(--line-strong);
   border-radius: 3px;
 }
+
+/* ---------- 모바일 — 패딩만 축소, 정렬은 유지 (가운데) ---------- */
+@media (max-width: 600px) {
+  .sb-modal {
+    padding: 0.85rem;
+    /* align-items: center 유지 — Modal의 기본값 */
+  }
+
+  .sb-modal__card {
+    max-height: calc(100dvh - 1.7rem);
+    padding: 2rem 1.1rem 1.1rem;
+    border-radius: 12px;
+  }
+}
