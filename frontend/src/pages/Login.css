@@ -472,4 +472,23 @@
     width: 180px;
     height: 180px;
   }
+
+  .login__title {
+    font-size: 1.2rem;
+  }
+
+  .login__brand {
+    gap: 0.7rem;
+    padding: 0.4rem 0 0;
+  }
+
+  .login__form {
+    gap: 0.75rem;
+  }
+
+  /* footer 라인 — 매우 좁은 폰에선 한 줄 wrap 위험 — 더 줄임 */
+  .login__system {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+  }
 }

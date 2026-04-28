@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
 import AlertModal from '../components/AlertModal';
+import Sidebar from '../components/Sidebar';
+import MobileTabBar from '../components/MobileTabBar';
 import Avatar from '../components/vault/Avatar';
 import AddEditItemModal from '../components/vault/AddEditItemModal';
 import ItemHistoryModal from '../components/vault/ItemHistoryModal';
@@ -51,6 +53,10 @@ export default function Vault() {
   const email = useSessionStore((s) => s.email);
   const unlockMaterial = useSessionStore((s) => s.unlockMaterial);
   const clear = useSessionStore((s) => s.clear);
+
+  const [searchParams] = useSearchParams();
+  // URL ?type=note 면 메모 탭, 그 외엔 로그인 탭 (기본)
+  const itemType: 'login' | 'note' = searchParams.get('type') === 'note' ? 'note' : 'login';
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(null);
@@ -130,28 +136,50 @@ export default function Vault() {
     }
   }, [items, editing, historyOf]);
 
-  // 헤더 통계: 총 개수 + 카테고리별 카운트 (count desc 정렬)
+  // 사이드바/탭바에 보여줄 타입별 카운트 (전체 items 기준 — 필터와 무관)
+  const typeCounts = useMemo(() => {
+    if (!items) return { login: 0, note: 0 };
+    let login = 0;
+    let note = 0;
+    items.forEach((i) => {
+      if (i.itemType === 'note') note++;
+      else login++;
+    });
+    return { login, note };
+  }, [items]);
+
+  // 현재 활성 타입에 속한 항목들만 추려서 카테고리 brakedown 계산
+  const itemsOfType = useMemo(
+    () => items?.filter((i) => (i.itemType === 'note' ? 'note' : 'login') === itemType) ?? [],
+    [items, itemType],
+  );
+
+  // 헤더 통계: 활성 타입의 총 개수 + 카테고리별 카운트 (count desc 정렬)
   const stats = useMemo(() => {
-    if (!items) return null;
-    const total = items.length;
+    const total = itemsOfType.length;
     if (total === 0) return { total: 0, breakdown: [] as [CategorySlug, number][] };
     const byCategory = new Map<CategorySlug, number>();
-    items.forEach((i) => {
+    itemsOfType.forEach((i) => {
       const c = i.plaintext.category;
       byCategory.set(c, (byCategory.get(c) ?? 0) + 1);
     });
     const breakdown = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
     return { total, breakdown };
-  }, [items]);
+  }, [itemsOfType]);
 
   const hasAnyTotp = useMemo(
-    () => items?.some((i) => !!i.plaintext.totpSecret) ?? false,
-    [items],
+    () => itemsOfType.some((i) => !!i.plaintext.totpSecret),
+    [itemsOfType],
   );
 
+  // 탭 전환 시 검색어/카테고리 필터 초기화 (사용자가 깨끗한 화면을 기대)
+  useEffect(() => {
+    setSearch('');
+    setActiveCategory(null);
+  }, [itemType]);
+
   const filtered = useMemo(() => {
-    if (!items) return [];
-    let list = items;
+    let list = itemsOfType;
     if (activeCategory) {
       list = list.filter((i) => i.plaintext.category === activeCategory);
     }
@@ -184,9 +212,10 @@ export default function Vault() {
       }
     });
     return sorted;
-  }, [items, search, activeCategory, sortMode]);
+  }, [itemsOfType, search, activeCategory, sortMode]);
 
   async function handleCopy(item: DecryptedVaultItem) {
+    if (!item.plaintext.password) return;
     try {
       await navigator.clipboard.writeText(item.plaintext.password);
       setCopiedId(item.id);
@@ -283,37 +312,37 @@ export default function Vault() {
 
   if (!dek && !unlockMaterial) return null;
 
+  const typeLabel = itemType === 'note' ? '메모' : '패스워드';
+  // 패스워드/메모 둘 다 받침 없는 모음 → '가' 통일
+
   return (
     <div className="page page--vault">
+      <Sidebar
+        current={itemType}
+        counts={typeCounts}
+        email={email ?? ''}
+        onLogout={handleLogout}
+      />
       <main className="vault">
         <header className="vault__head">
-          <div className="vault__topStrip rise delay-1">
-            <div className="vault__brand">
-              <Logo size={28} />
-              <span className="vault__wordmark">SecretBox</span>
-            </div>
-            <div className="vault__user">
-              <span className="vault__email">{email}</span>
-              <Link to="/settings" className="vault__userBtn">설정</Link>
-              <button type="button" className="vault__userBtn" onClick={handleLogout}>
-                로그아웃
-              </button>
-            </div>
+          {/* 모바일 전용 상단 brand — 사이드바 숨겨진 환경에서 로고 노출 */}
+          <div className="vault__mobileBrand">
+            <Logo size={22} />
+            <span className="vault__mobileWordmark">SecretBox</span>
           </div>
-
           <section className="vault__hero rise delay-2">
-            {stats === null ? (
+            {stats.total === 0 && itemType === 'note' ? (
               <h1 className="vault__heroTitle">
-                <em>SecretBox</em>를 여는 중…
+                첫 <em>보안 메모</em>를<br />작성해보세요.
               </h1>
             ) : stats.total === 0 ? (
               <h1 className="vault__heroTitle">
-                첫 <em>암호</em>를<br />보관해보세요.
+                첫 <em>비밀</em>을<br />보관해보세요.
               </h1>
             ) : (
               <>
                 <h1 className="vault__heroTitle">
-                  현재 <em>{stats.total}개</em>의 암호가<br />
+                  현재 <em>{stats.total}개</em>의 {typeLabel}가<br />
                   안전하게 잠겨있어요.
                 </h1>
                 <ul className="vault__filters" role="tablist" aria-label="카테고리 필터">
@@ -367,7 +396,7 @@ export default function Vault() {
             className="vault__search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름·아이디·카테고리로 검색"
+            placeholder="이름·아이디·카테고리·메모 제목 검색"
           />
           <select
             className="vault__sort"
@@ -409,30 +438,35 @@ export default function Vault() {
             <p className="vault__state">불러오는 중…</p>
           )}
 
-          {!isPending && filtered.length === 0 && items && items.length === 0 && (
+          {!isPending && itemsOfType.length === 0 && (
             <div className="vault__empty">
               <div className="vault__emptyIcon" aria-hidden>
                 <Logo size={44} />
               </div>
-              <p className="vault__emptyTitle">아직 보관된 암호가 없어요</p>
+              <p className="vault__emptyTitle">
+                {itemType === 'note'
+                  ? '아직 작성된 메모가 없어요'
+                  : '아직 보관된 패스워드가 없어요'}
+              </p>
               <p className="vault__emptyBody">
-                지금 첫 암호를 만들어<br />
-                안전하게 잠가보세요.
+                {itemType === 'note'
+                  ? '와이파이 비밀번호, 보안 질문 답…\n자유 텍스트로 안전하게 저장하세요.'
+                  : '카탈로그에서 서비스를 고르거나\n직접 입력해 등록할 수 있어요.'}
               </p>
               <button
                 type="button"
                 className="vault__emptyCta"
                 onClick={() => setShowAdd(true)}
               >
-                + 첫 항목 등록하기
+                {itemType === 'note' ? '+ 첫 메모 작성하기' : '+ 첫 패스워드 등록하기'}
               </button>
             </div>
           )}
 
-          {!isPending && filtered.length === 0 && items && items.length > 0 && (
+          {!isPending && itemsOfType.length > 0 && filtered.length === 0 && (
             <div className="vault__empty vault__empty--noResults">
               <p className="vault__emptyBody">
-                <strong className="vault__searchTerm">{search}</strong>에 해당하는 항목이 없습니다.
+                <strong className="vault__searchTerm">{search}</strong>에 해당하는 {typeLabel} 항목이 없습니다.
               </p>
             </div>
           )}
@@ -443,34 +477,50 @@ export default function Vault() {
                 ? catalogMap.get(item.plaintext.catalogSlug)
                 : undefined;
               const isCopied = copiedId === item.id;
+              const isNote = item.itemType === 'note';
               return (
-                <li key={item.id} className="vault__card">
+                <li
+                  key={item.id}
+                  className={'vault__card' + (isNote ? ' vault__card--note' : '')}
+                >
                   <button
                     type="button"
                     className="vault__cardBody"
                     onClick={() => setEditing(item)}
                   >
-                    <Avatar
-                      name={item.plaintext.name}
-                      iconUrl={cat?.iconUrl}
-                      brandColor={cat?.brandColor}
-                      size={36}
-                    />
+                    {isNote ? (
+                      <div className="vault__noteAvatar" aria-hidden>
+                        <NoteIcon />
+                      </div>
+                    ) : (
+                      <Avatar
+                        name={item.plaintext.name}
+                        iconUrl={cat?.iconUrl}
+                        brandColor={cat?.brandColor}
+                        size={36}
+                      />
+                    )}
                     <div className="vault__cardInfo">
                       <span className="vault__cardName">{item.plaintext.name}</span>
-                      <span className="vault__cardUser">
-                        {item.plaintext.alias && (
-                          <span className="vault__cardSubname">{item.plaintext.alias}</span>
-                        )}
-                        {item.plaintext.alias && item.plaintext.username && ' · '}
-                        {item.plaintext.username}
-                      </span>
+                      {isNote ? (
+                        <span className="vault__cardUser vault__cardUser--note">
+                          •••••• 보안 메모 — 클릭해 열기
+                        </span>
+                      ) : (
+                        <span className="vault__cardUser">
+                          {item.plaintext.alias && (
+                            <span className="vault__cardSubname">{item.plaintext.alias}</span>
+                          )}
+                          {item.plaintext.alias && item.plaintext.username && ' · '}
+                          {item.plaintext.username}
+                        </span>
+                      )}
                     </div>
                     <span className="vault__cardCat">
-                      {CATEGORY_LABELS[item.plaintext.category]}
+                      {isNote ? '메모' : CATEGORY_LABELS[item.plaintext.category]}
                     </span>
                   </button>
-                  {item.plaintext.totpSecret && (
+                  {!isNote && item.plaintext.totpSecret && (
                     <TotpDisplay
                       secret={item.plaintext.totpSecret}
                       visible={totpVisible}
@@ -493,7 +543,7 @@ export default function Vault() {
                     >
                       <StarIcon filled={!!item.plaintext.favorite} />
                     </button>
-                    {item.plaintext.url && (
+                    {!isNote && item.plaintext.url && (
                       <a
                         className="vault__cardAction"
                         href={item.plaintext.url}
@@ -505,7 +555,7 @@ export default function Vault() {
                         <ExternalLinkIcon />
                       </a>
                     )}
-                    {item.plaintext.username && (
+                    {!isNote && item.plaintext.username && (
                       <button
                         type="button"
                         className={
@@ -519,18 +569,20 @@ export default function Vault() {
                         {copiedUserId === item.id ? <CheckIcon /> : <UserIcon />}
                       </button>
                     )}
-                    <button
-                      type="button"
-                      className={
-                        'vault__cardAction'
-                        + (isCopied ? ' vault__cardAction--copied' : '')
-                      }
-                      onClick={() => handleCopy(item)}
-                      title={isCopied ? '복사됨' : '암호 복사'}
-                      aria-label="암호 복사"
-                    >
-                      {isCopied ? <CheckIcon /> : <KeyIcon />}
-                    </button>
+                    {!isNote && (
+                      <button
+                        type="button"
+                        className={
+                          'vault__cardAction'
+                          + (isCopied ? ' vault__cardAction--copied' : '')
+                        }
+                        onClick={() => handleCopy(item)}
+                        title={isCopied ? '복사됨' : '암호 복사'}
+                        aria-label="암호 복사"
+                      >
+                        {isCopied ? <CheckIcon /> : <KeyIcon />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="vault__cardAction"
@@ -575,6 +627,7 @@ export default function Vault() {
         isOpen={showAdd || editing !== null}
         onClose={() => { setShowAdd(false); setEditing(null); }}
         initialItem={editing}
+        initialType={itemType}
         onError={(msg) => setErrorAlert({ title: '오류', message: msg })}
       />
 
@@ -609,6 +662,8 @@ export default function Vault() {
         title={errorAlert?.title ?? ''}
         message={errorAlert?.message}
       />
+
+      <MobileTabBar current={itemType} />
     </div>
   );
 }
@@ -718,3 +773,17 @@ function TrashIcon() {
     </svg>
   );
 }
+
+function NoteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+         stroke="currentColor" strokeWidth="1.6"
+         strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 3 14 8 19 8" />
+      <line x1="9" y1="13" x2="15" y2="13" />
+      <line x1="9" y1="17" x2="13" y2="17" />
+    </svg>
+  );
+}
+

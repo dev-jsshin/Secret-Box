@@ -201,4 +201,15 @@
   .sb-alert__actions {
     max-width: none;
   }
+
+  /* 단일 액션 — 폭 100% (작은 화면에선 어색하지 않게) */
+  .sb-alert__action {
+    width: 100%;
+    min-height: 44px;
+  }
+
+  .sb-alert__actions .sb-alert__action {
+    width: auto;          /* confirm 모드는 위에서 flex:1 처리됨 */
+    min-height: 44px;
+  }
 }

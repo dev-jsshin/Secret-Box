@@ -1,0 +1,79 @@
+/* ========================================================================
+   MobileTabBar — 모바일 하단 고정 (≤640만 표시), iOS notch 안전영역 보정
+   ======================================================================== */
+.mtb {
+  display: none;     /* 데스크톱/태블릿에선 숨김, ≤640에서만 등장 */
+}
+
+@media (max-width: 640px) {
+  .mtb {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 90;
+    background: rgba(10, 14, 26, 0.92);
+    border-top: 1px solid var(--line-default);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    padding: 0.35rem 0 calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .mtb__tab {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.18rem;
+    padding: 0.45rem 0.35rem;
+    color: var(--ink-muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: -0.005em;
+    text-decoration: none;
+    transition: color 160ms var(--ease);
+    min-height: 56px;
+  }
+
+  .mtb__tab svg {
+    flex-shrink: 0;
+    transition: transform 200ms var(--ease);
+  }
+
+  .mtb__tab:active {
+    color: var(--ink-secondary);
+  }
+
+  .mtb__tab:active svg {
+    transform: scale(0.9);
+  }
+
+  .mtb__tab.is-active {
+    color: var(--amber);
+  }
+
+  .mtb__tab.is-active svg {
+    /* 미세한 강조 — 너무 큰 변형은 산만함 */
+    filter: drop-shadow(0 0 6px rgba(212, 146, 74, 0.35));
+  }
+
+  .mtb__label {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+}
+
+/* ====================================================================
+   터치 디바이스 — hover 잔류 방지
+   ==================================================================== */
+@media (hover: none) {
+  .mtb__tab:hover {
+    color: var(--ink-muted);
+  }
+  .mtb__tab.is-active:hover {
+    color: var(--amber);
+  }
+}

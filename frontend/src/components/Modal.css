@@ -6,7 +6,12 @@
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  animation: rise 0.25s var(--ease) both;
+  animation: modalFade 0.2s var(--ease);   /* 백드롭 페이드만 — transform X */
+}
+
+@keyframes modalFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 .sb-modal__backdrop {
@@ -20,39 +25,57 @@
 .sb-modal__card {
   position: relative;
   width: 100%;
-  max-width: 600px;
+  max-width: 640px;
   max-height: calc(100vh - 3rem);
+  max-height: calc(100dvh - 3rem);
   overflow-y: auto;
   background: var(--bg-elevated);
   border: 1px solid var(--line-default);
   border-radius: 10px;
-  padding: 2.4rem 1.8rem 1.6rem;   /* X 버튼 공간 확보로 콘텐츠가 풀 너비로 확장 가능 */
+  /* top padding 2.6rem(41.6px) = X(30) + top offset(0.5rem≈8) + 작은 여유.
+     이 자리만 X용으로 확보 → content는 X와 겹치지 않음 */
+  padding: 2.6rem 1.4rem 1.2rem;
   box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.8);
-  animation: rise 0.45s var(--ease) both;
+  /* transform 기반 rise 애니메이션 제거 — iOS native <select> picker가
+     transform 가진 부모 안에서 위치 잘못 잡는 이슈 (모바일에서 카테고리 드롭다운 위치 이상) */
+  animation: modalFade 0.22s var(--ease);
 }
 
+/* X 버튼 — SVG 기반. 30×30 hit area + 모달 우상단 코너 안쪽에 정확히 배치.
+   modal padding-top(2.6rem)으로 콘텐츠와 분리된 전용 공간에 위치. */
 .sb-modal__close {
   position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
-  width: 26px;
-  height: 26px;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--ink-muted);
+  background: transparent;
   border: 1px solid transparent;
-  transition: color 200ms var(--ease), border-color 200ms var(--ease), background 200ms var(--ease);
+  border-radius: 6px;
+  color: var(--ink-muted);
   cursor: pointer;
   z-index: 1;
+  transition: color 180ms var(--ease), border-color 180ms var(--ease), background 180ms var(--ease);
+}
+
+.sb-modal__close svg {
+  display: block;
+  width: 16px;
+  height: 16px;
 }
 
 .sb-modal__close:hover {
   color: var(--ink-primary);
-  background: var(--line-subtle);
+  background: rgba(232, 226, 207, 0.05);
   border-color: var(--line-default);
+}
+
+.sb-modal__close:focus-visible {
+  outline: 1px solid var(--amber);
+  outline-offset: 2px;
 }
 
 /* scrollbar */
@@ -76,7 +99,22 @@
 
   .sb-modal__card {
     max-height: calc(100dvh - 1.7rem);
-    padding: 2rem 1.1rem 1.1rem;
+    /* 모바일: X(36) + offset(0.4rem≈6) + 여유 → padding-top 2.8rem(44.8px) */
+    padding: 2.8rem 0.95rem 0.95rem;
     border-radius: 12px;
+  }
+
+  /* X 버튼 — iOS HIG 충족 위해 36×36 (SVG 18px) */
+  .sb-modal__close {
+    width: 36px;
+    height: 36px;
+    top: 0.4rem;
+    right: 0.4rem;
+    border-radius: 6px;
+  }
+
+  .sb-modal__close svg {
+    width: 18px;
+    height: 18px;
   }
 }

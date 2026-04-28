@@ -4,6 +4,11 @@ import type { VaultItemDto } from '../api/vault';
 /**
  * 복호화된 vault item의 내부 구조.
  * encryptedData를 DEK로 풀면 이 형태의 JSON이 나온다.
+ *
+ * VaultItemDto.itemType ('login' | 'note')에 따라 사용 필드가 다름:
+ *   - 'login': name, alias?, catalogSlug?, category, username?, password,
+ *              url?, notes?, totpSecret?, favorite?
+ *   - 'note':  name, category, content, favorite?
  */
 export interface VaultItemPlaintext {
   name: string;
@@ -11,9 +16,10 @@ export interface VaultItemPlaintext {
   catalogSlug?: string;        // 카탈로그 매칭 (있으면)
   category: CategorySlug;
   username?: string;
-  password: string;
+  password?: string;           // login만 — note에선 비어있음
   url?: string;
   notes?: string;
+  content?: string;            // note 본문 (자유 텍스트)
   favorite?: boolean;
   totpSecret?: string;         // base32 — RFC 6238 TOTP secret (Google Authenticator 호환)
 }

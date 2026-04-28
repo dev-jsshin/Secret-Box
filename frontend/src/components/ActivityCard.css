@@ -231,4 +231,32 @@
   .ac__pageLabel {
     font-size: 10.5px;
   }
+
+  /* meta — IP + Chrome · macOS 길어지면 ellipsis 한 줄 유지 (이미 nowrap).
+     row 자체가 좁아 시간 옆 액션이 짤리는 케이스 방지 */
+  .ac__row {
+    align-items: center;
+  }
+
+  .ac__action {
+    font-size: 0.84rem;
+  }
+}
+
+/* 매우 좁은 폰 — pager 라벨이 길어 양쪽 버튼이 겹칠 수 있음 → 라벨 압축 */
+@media (max-width: 360px) {
+  .ac__pageLabel {
+    font-size: 10px;
+    letter-spacing: 0;
+  }
+
+  .ac__pageBtn {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.74rem;
+  }
+
+  .ac__entry {
+    padding: 0.55rem 0.2rem;
+    gap: 0.5rem;
+  }
 }

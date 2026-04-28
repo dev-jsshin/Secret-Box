@@ -1,46 +1,81 @@
-/* page wrapper override: vault는 화면 전체에 딱 맞게.
+/* page wrapper override: vault는 화면 전체 + 좌측 사이드바 + 본문 2-column.
+   .page.page--vault 로 specificity 2 — index.css의 .page 규칙(specificity 1)을 확실히 이김.
    모바일 주소창 고려 — vh→dvh로 fallback 체인. */
-.page--vault {
+.page.page--vault {
   min-height: 100vh;
   min-height: 100dvh;
   height: 100vh;
   height: 100dvh;
   padding: 0;
-  justify-content: stretch;
+  display: flex;
+  flex-direction: row;          /* 좌: sidebar / 우: main */
+  justify-content: flex-start;  /* row 방향: stretch는 invalid → flex-start로 명시 */
   align-items: stretch;
   overflow: hidden;
 }
 
-/* 모바일에선 .page의 padding/centering을 무시하기 위해 explicit override */
+/* 모바일에선 사이드바 hidden + 하단 탭바가 등장 → main이 풀폭 column */
 @media (max-width: 640px) {
-  .page--vault {
-    padding: 0;
-    justify-content: stretch;
+  .page.page--vault {
+    flex-direction: column;
   }
 }
 
 .vault {
+  flex: 1;
+  min-width: 0;                 /* sibling sidebar 옆에서 안전 */
   width: 100%;
-  max-width: 720px;
-  margin: 0 auto;
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 0 clamp(1.25rem, 4vw, 2rem);
+  padding: 0 clamp(1.5rem, 5vw, 3rem);   /* 풀폭이라 좌우 호흡 ↑ */
   overflow: hidden;
 }
+
+/* 데스크톱 와이드(≥1280) — 너무 넓어지면 inner block 가독성 위해 살짝 캡 + 가운데 */
+@media (min-width: 1280px) {
+  .vault {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2.4rem;
+  }
+}
+
 
 /* ---------- header (top sticky) ---------- */
 .vault__head {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
-  padding-top: clamp(1rem, 3vh, 1.75rem);
+  gap: 1rem;
+  padding-top: clamp(1.4rem, 4vh, 2.1rem);    /* topStrip 사라졌으니 위쪽 호흡 ↑ */
   padding-bottom: 0.6rem;
   background: rgba(10, 14, 26, 0.78);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+}
+
+/* 모바일 전용 상단 brand — 데스크톱/태블릿은 사이드바에 로고 있으니 숨김 */
+.vault__mobileBrand {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .vault__mobileBrand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0 0.7rem;
+    border-bottom: 1px solid var(--line-subtle);
+  }
+
+  .vault__mobileWordmark {
+    font-family: var(--font-sans);
+    font-size: 0.92rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--ink-primary);
+  }
 }
 
 /* top strip: brand + user actions */
@@ -195,13 +230,15 @@
 
 .vault__search {
   flex: 1;
+  height: 38px;                 /* 다른 toolbar 요소와 같은 높이 */
+  box-sizing: border-box;
   background: transparent;
   border: 1px solid var(--line-default);
   border-radius: 6px;
   color: var(--ink-primary);
   font-family: var(--font-sans);
   font-size: 0.92rem;
-  padding: 0.55rem 0.85rem;
+  padding: 0 0.85rem;
   outline: 0;
   transition: border-color 180ms var(--ease);
 }
@@ -219,6 +256,7 @@
   flex: 0 0 auto;
   appearance: none;
   -webkit-appearance: none;
+  box-sizing: border-box;
   background: transparent;
   border: 1px solid var(--line-default);
   border-radius: 6px;
@@ -227,7 +265,7 @@
   font-size: 0.85rem;
   font-weight: 500;
   padding: 0 1.7rem 0 0.7rem;
-  height: 36px;
+  height: 38px;             /* search/totp/add와 동일 */
   cursor: pointer;
   /* 작은 인라인 chevron */
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B5AC97' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
@@ -256,7 +294,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.55rem 0.75rem;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 0.75rem;
   background: transparent;
   border: 1px solid var(--line-default);
   border-radius: 6px;
@@ -286,7 +326,9 @@
 
 .vault__addBtn {
   flex: 0 0 auto;
-  padding: 0.55rem 1rem;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 1rem;
   background: var(--amber);
   color: #1A1108;
   border: 1px solid var(--amber);
@@ -618,6 +660,35 @@
   flex-shrink: 0;
 }
 
+/* ---------- note 항목 카드 ---------- */
+.vault__noteAvatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(232, 226, 207, 0.04);
+  border: 1px solid var(--line-default);
+  border-radius: 7px;
+  color: var(--ink-secondary);
+}
+
+/* note 카드 — 카테고리 칩을 "메모"로 살짝 다른 톤 */
+.vault__card--note .vault__cardCat {
+  color: var(--ink-secondary);
+  border-color: var(--line-strong);
+  background: rgba(232, 226, 207, 0.025);
+}
+
+/* note 카드 sub line — content preview, 모노 톤 */
+.vault__cardUser--note {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.01em;
+  color: var(--ink-faint);
+}
+
 /* ---------- footer (bottom sticky) ---------- */
 .vault__foot {
   flex-shrink: 0;
@@ -667,6 +738,18 @@
 @media (max-width: 640px) {
   .vault {
     padding: 0 0.95rem;
+    max-width: none;
+    margin: 0 auto;             /* 사이드바 없으니 가운데 정렬로 복구 */
+  }
+
+  /* 시스템 footer는 탭바가 자리 차지 → 숨김 */
+  .vault__foot {
+    display: none;
+  }
+
+  /* 콘텐츠 하단 — 탭바(56px) + 탭바 패딩(0.7rem ≈ 11px) + 여백(20px) 합산 + safe-area */
+  .vault__content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
 
   /* 헤더 — 영역 압축 */
@@ -863,8 +946,32 @@
     font-size: 12px;
   }
 
+  /* 액션 6개 × 36 = 216px. 360px 폭 - padding 30 = 330px → 여유. OK */
   .vault__cardAction {
     width: 36px;
     height: 36px;
+  }
+}
+
+/* 터치 디바이스 — hover 잔류 차단 (모바일에서 카드/칩이 터치 후 amber 보더로 굳는 sticky-hover 방지) */
+@media (hover: none) {
+  .vault__card:hover {
+    border-color: var(--line-default);
+    background: var(--bg-elevated);
+  }
+
+  .vault__filterChip:hover {
+    border-color: var(--line-default);
+    background: transparent;
+  }
+
+  .vault__filterChip.is-active:hover {
+    border-color: rgba(212, 146, 74, 0.7);
+    background: rgba(212, 146, 74, 0.1);
+  }
+
+  .vault__cardAction:hover {
+    background: transparent;
+    color: var(--ink-muted);
   }
 }

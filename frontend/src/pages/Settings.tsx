@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
@@ -7,12 +7,15 @@ import Button from '../components/Button';
 import FormField from '../components/FormField';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
 import AlertModal from '../components/AlertModal';
+import Sidebar from '../components/Sidebar';
+import MobileTabBar from '../components/MobileTabBar';
 import TwoFactorCard from '../components/TwoFactorCard';
 import ActivityCard from '../components/ActivityCard';
 import { scorePassword } from '../lib/passwordTools';
 
 import { authApi } from '../api/auth';
 import { usersApi } from '../api/users';
+import { vaultApi } from '../api/vault';
 import { ApiError, getRefreshToken, setAccessToken, setRefreshToken } from '../api/client';
 import { base64ToBytes, bytesToBase64 } from '../crypto/base64';
 import { encrypt } from '../crypto/cipher';
@@ -83,6 +86,19 @@ export default function Settings() {
   const [success, setSuccess] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
+  // 사이드바에 보일 타입별 카운트 — itemType은 서버 평문 컬럼이라 복호화 불필요
+  const countsQuery = useQuery({
+    queryKey: ['vault-counts'],
+    queryFn: async () => {
+      const { items } = await vaultApi.list();
+      let login = 0;
+      let note = 0;
+      items.forEach((i) => (i.itemType === 'note' ? note++ : login++));
+      return { login, note };
+    },
+    staleTime: 1000 * 30,
+  });
+
   const sessionsQuery = useQuery({
     queryKey: ['user-sessions'],
     queryFn: () => usersApi.listSessions(),
@@ -238,25 +254,19 @@ export default function Settings() {
 
   return (
     <div className="page page--vault">
+      <Sidebar
+        current="settings"
+        counts={countsQuery.data ?? { login: 0, note: 0 }}
+        email={email ?? ''}
+        onLogout={handleLogout}
+      />
       <main className="settings">
         <header className="settings__head">
-          <div className="settings__topStrip rise delay-1">
-            <div className="settings__brand">
-              <Logo size={28} />
-              <span className="settings__wordmark">SecretBox</span>
-            </div>
-            <div className="settings__user">
-              <span className="settings__email">{email}</span>
-              <Link to="/vault" className="settings__userBtn settings__userBtn--primary">
-                <BackArrowIcon />
-                보관함
-              </Link>
-              <button type="button" className="settings__userBtn" onClick={handleLogout}>
-                로그아웃
-              </button>
-            </div>
+          {/* 모바일 전용 상단 brand */}
+          <div className="settings__mobileBrand">
+            <Logo size={22} />
+            <span className="settings__mobileWordmark">SecretBox</span>
           </div>
-
           <section className="settings__intro rise delay-2">
             <h1 className="settings__title">설정</h1>
             <p className="settings__sub">{activeTabInfo.sub}</p>
@@ -407,7 +417,7 @@ export default function Settings() {
 
           <div className="settings__notice">
             <LockIcon />
-            <span>비밀번호를 바꿔도 저장된 암호는 그대로 사용할 수 있어요.</span>
+            <span>비밀번호를 바꿔도 저장된 항목은 그대로 사용할 수 있어요.</span>
           </div>
 
           {success && (
@@ -491,6 +501,8 @@ export default function Settings() {
         title={errorAlert?.title ?? ''}
         message={errorAlert?.message}
       />
+
+      <MobileTabBar current="settings" />
     </div>
   );
 }
@@ -557,17 +569,6 @@ function PowerIcon() {
          strokeLinecap="round" strokeLinejoin="round">
       <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
       <line x1="12" y1="2" x2="12" y2="12" />
-    </svg>
-  );
-}
-
-function BackArrowIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="13" height="13" fill="none"
-         stroke="currentColor" strokeWidth="1.8"
-         strokeLinecap="round" strokeLinejoin="round">
-      <line x1="19" y1="12" x2="5" y2="12" />
-      <polyline points="12 19 5 12 12 5" />
     </svg>
   );
 }

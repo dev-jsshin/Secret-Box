@@ -45,6 +45,12 @@ html, body, #root {
   background: var(--bg-base);
 }
 
+/* 모바일 가로 스크롤 절대 방지 + iOS 회전 시 자동 폰트 확대 방지 */
+html {
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
 body {
   font-family: var(--font-sans);
   font-weight: 400;

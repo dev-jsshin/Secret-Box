@@ -257,4 +257,22 @@
     width: 180px;
     height: 180px;
   }
+
+  .register__title {
+    font-size: 1.2rem;
+  }
+
+  .register__brand {
+    gap: 0.7rem;
+    padding: 0.4rem 0 0;
+  }
+
+  .register__form {
+    gap: 0.75rem;
+  }
+
+  .register__system {
+    font-size: 8px;
+    letter-spacing: 0.1em;
+  }
 }

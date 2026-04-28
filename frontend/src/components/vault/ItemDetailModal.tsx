@@ -81,10 +81,10 @@ export default function ItemDetailModal({
 
           <Row
             label="비밀번호"
-            value={revealed ? item.plaintext.password : '••••••••••••'}
+            value={revealed ? (item.plaintext.password ?? '') : '••••••••••••'}
             copyKey="password"
             copiedKey={copiedField}
-            onCopy={() => copy('password', item.plaintext.password)}
+            onCopy={() => copy('password', item.plaintext.password ?? '')}
             mono
             extraButton={
               <button
