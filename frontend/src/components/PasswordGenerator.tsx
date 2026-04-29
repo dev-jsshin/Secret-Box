@@ -7,7 +7,6 @@ import {
   generatePassword,
   type GenerateOptions,
 } from '../lib/passwordGen';
-import { scorePassword } from '../lib/passwordTools';
 
 import './PasswordGenerator.css';
 
@@ -18,27 +17,23 @@ interface Props {
 
 /**
  * 패스워드 생성기 — Live-fill 패턴.
- * 마운트 즉시 생성 + onGenerate 호출 → 부모의 password 필드에 자동 채워짐.
- * 옵션을 만지면 실시간 재생성 + onGenerate 다시 호출.
- * 별도 "사용" 버튼 X — 입력 필드에 이미 들어가 있으니 닫기만 하면 됨.
+ * 옵션 패널만 보여준다. 강도 미터는 부모(폼 측)가 입력 필드에 인라인 표시.
+ *
+ * 마운트 즉시 첫 생성 → onGenerate 콜백으로 부모 비번 input에 자동 채워짐.
+ * 옵션 변경 시 실시간 재생성 + onGenerate 다시 호출.
  */
 export default function PasswordGenerator({ onGenerate }: Props) {
   const [opts, setOpts] = useState<GenerateOptions>(DEFAULT_GENERATE_OPTIONS);
-  const [current, setCurrent] = useState<string>('');
 
   // 옵션 변경 / 마운트 시 재생성
   useEffect(() => {
-    const pw = generatePassword(opts);
-    setCurrent(pw);
-    onGenerate(pw);
+    onGenerate(generatePassword(opts));
     // onGenerate은 매 변경마다 호출돼야 하므로 deps에서 제외 (안정 함수 가정)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts]);
 
   function regen() {
-    const pw = generatePassword(opts);
-    setCurrent(pw);
-    onGenerate(pw);
+    onGenerate(generatePassword(opts));
   }
 
   function toggle(key: keyof GenerateOptions) {
@@ -52,38 +47,24 @@ export default function PasswordGenerator({ onGenerate }: Props) {
     });
   }
 
-  const strength = scorePassword(current);
-
   return (
     <div className="pwg" role="region" aria-label="패스워드 생성기">
-      {/* 길이 + 강도 한 줄에 */}
-      <div className="pwg__topRow">
+      {/* 길이 슬라이더 */}
+      <div className="pwg__lenRow">
         <label className="pwg__lenLabel" htmlFor="pwg-len">
-          길이 <span className="pwg__lenValue">{opts.length}</span>
+          <span>길이</span>
+          <span className="pwg__lenValue">{opts.length}</span>
         </label>
-        <div className="pwg__strength" aria-label={`강도: ${strength.label}`}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <span
-              key={n}
-              className={
-                'pwg__strengthBar'
-                + (strength.score >= n ? ' is-on' : '')
-                + ` is-tone-${strength.score}`
-              }
-            />
-          ))}
-        </div>
+        <input
+          id="pwg-len"
+          type="range"
+          className="pwg__slider"
+          min={LENGTH_MIN}
+          max={LENGTH_MAX}
+          value={opts.length}
+          onChange={(e) => setOpts((c) => ({ ...c, length: Number(e.target.value) }))}
+        />
       </div>
-
-      <input
-        id="pwg-len"
-        type="range"
-        className="pwg__slider"
-        min={LENGTH_MIN}
-        max={LENGTH_MAX}
-        value={opts.length}
-        onChange={(e) => setOpts((c) => ({ ...c, length: Number(e.target.value) }))}
-      />
 
       {/* 카테고리 토글 + 다시 생성 */}
       <div className="pwg__bottomRow">
@@ -110,7 +91,7 @@ export default function PasswordGenerator({ onGenerate }: Props) {
           checked={opts.excludeAmbiguous}
           onChange={() => setOpts((c) => ({ ...c, excludeAmbiguous: !c.excludeAmbiguous }))}
         />
-        <span>유사 문자 제외 (i, l, 1, o, 0)</span>
+        <span>유사 문자 제외 <em className="pwg__checkHint">(i · l · 1 · o · 0)</em></span>
       </label>
     </div>
   );
@@ -140,7 +121,7 @@ function Toggle({
 function RefreshIcon() {
   return (
     <svg viewBox="0 0 18 18" width="14" height="14" fill="none"
-         stroke="currentColor" strokeWidth="1.5"
+         stroke="currentColor" strokeWidth="1.6"
          strokeLinecap="round" strokeLinejoin="round">
       <polyline points="14 3 14 7 10 7" />
       <path d="M14 7A6 6 0 1 0 13 13" />

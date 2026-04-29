@@ -1,5 +1,61 @@
 /* ========================================================================
-   Step 1: 카탈로그 그리드 (서비스 선택)
+   AddEditItemModal — "Refined Workshop" 디자인
+   - Cryptographic Atelier 미감 유지 (deep ink + warm amber)
+   - 좌측 hairline 액센트, eyebrow + display 헤더, 섹션 위계, sticky footer
+   - 패스워드 생성기는 popover 패턴 (layout shift 0)
+   ======================================================================== */
+.ai {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  /* Modal card 자체 padding을 활용 — 여기서는 안쪽 흐름만 */
+}
+
+/* form wrapper — sticky footer가 form 안에서 작동하려면 column flex */
+.ai__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+/* ========================================================================
+   Header — eyebrow + display title
+   ======================================================================== */
+.ai__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.ai__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ai__title {
+  font-family: var(--font-sans);
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.18;
+  color: var(--ink-primary);
+}
+
+.ai__title em {
+  font-style: normal;
+  color: var(--amber);
+  font-weight: 800;
+}
+
+/* ========================================================================
+   Picker — 검색 + 그리드 + custom row
    ======================================================================== */
 .ai-pick {
   display: flex;
@@ -7,260 +63,247 @@
   gap: 0.85rem;
 }
 
-.ai-pick__title {
-  font-size: 1.3rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.3;
+/* 검색창 — 아이콘 inline + count kbd */
+.ai-pick__searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.ai-pick__title em {
-  font-style: normal;
-  color: var(--amber);
-  font-weight: 800;
+.ai-pick__searchIcon {
+  position: absolute;
+  left: 0.85rem;
+  color: var(--ink-muted);
+  pointer-events: none;
 }
 
-.ai-pick__lede {
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  color: var(--ink-secondary);
-  line-height: 1.55;
-  margin-top: -0.4rem;
-}
-
-.ai-pick__search {
-  background: transparent;
+.ai-pick__searchInput {
+  width: 100%;
+  padding: 0.7rem 3.2rem 0.7rem 2.4rem;
+  background: var(--bg-base);
   border: 1px solid var(--line-default);
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--ink-primary);
   font-family: var(--font-sans);
   font-size: 0.92rem;
-  padding: 0.55rem 0.85rem;
   outline: 0;
-  transition: border-color 180ms var(--ease);
+  transition: border-color 180ms var(--ease), box-shadow 180ms var(--ease);
 }
 
-.ai-pick__search:focus {
+.ai-pick__searchInput:focus {
   border-color: var(--amber);
+  box-shadow: inset 0 0 0 1px rgba(212, 146, 74, 0.25);
 }
 
-.ai-pick__search::placeholder {
+.ai-pick__searchInput::placeholder {
   color: var(--ink-faint);
+  font-weight: 300;
 }
 
+/* count kbd — 우측 표시 */
+.ai-pick__searchHint {
+  position: absolute;
+  right: 0.65rem;
+  padding: 2px 7px;
+  background: rgba(232, 226, 207, 0.04);
+  border: 1px solid var(--line-default);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* ---------- 카탈로그 그리드 ---------- */
 .ai-pick__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.5rem;
-  max-height: 320px;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 0.4rem;
+  max-height: 280px;
   overflow-y: auto;
-  padding: 0.1rem;
+  padding: 0.15rem;
+  margin: -0.15rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.ai-pick__grid::-webkit-scrollbar { width: 5px; }
+.ai-pick__grid::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
 }
 
 .ai-pick__cell {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.85rem 0.6rem 0.7rem;
-  background: var(--bg-base);
-  border: 1px solid var(--line-default);
-  border-radius: 8px;
+  padding: 0.75rem 0.5rem 0.65rem;
+  background: rgba(232, 226, 207, 0.018);
+  border: 1px solid var(--line-subtle);
+  border-radius: 7px;
   cursor: pointer;
   text-align: center;
-  transition: border-color 180ms var(--ease), background 180ms var(--ease),
-              transform 180ms var(--ease);
+  transition:
+    border-color 160ms var(--ease),
+    background 160ms var(--ease),
+    transform 160ms var(--ease);
+}
+
+/* Hover indicator — 우상단 작은 amber dot */
+.ai-pick__cell::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 4px;
+  height: 4px;
+  background: var(--amber);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 160ms var(--ease), transform 160ms var(--ease);
 }
 
 .ai-pick__cell:hover {
-  border-color: var(--amber);
-  background: rgba(212, 146, 74, 0.06);
-  transform: translateY(-1px);
+  border-color: rgba(212, 146, 74, 0.55);
+  background: rgba(212, 146, 74, 0.05);
+}
+
+.ai-pick__cell:hover::after {
+  opacity: 1;
+  transform: scale(1);
 }
 
 .ai-pick__cellName {
   font-family: var(--font-sans);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--ink-primary);
   line-height: 1.2;
-  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.ai-pick__cellCat {
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--ink-muted);
-}
-
+/* ---------- empty state ---------- */
 .ai-pick__empty {
   text-align: center;
+  padding: 1.6rem 0.8rem;
+  background: rgba(232, 226, 207, 0.018);
+  border: 1px dashed var(--line-default);
+  border-radius: 8px;
+}
+
+.ai-pick__emptyText {
   font-family: var(--font-sans);
   font-size: 0.85rem;
   color: var(--ink-muted);
-  padding: 2rem 0;
 }
 
-.ai-pick__customRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.7rem;
-  padding-top: 0.9rem;
-  border-top: 1px solid var(--line-subtle);
-}
-
-.ai-pick__customLabel {
-  font-family: var(--font-sans);
-  font-size: 0.85rem;
-  color: var(--ink-secondary);
-}
-
-.ai-pick__customBtn {
-  padding: 0.5rem 0.9rem;
-  background: rgba(212, 146, 74, 0.1);
-  border: 1px solid rgba(212, 146, 74, 0.42);
-  border-radius: 6px;
-  color: var(--amber-glow);
-  font-family: var(--font-sans);
-  font-size: 0.83rem;
+.ai-pick__emptyText strong {
+  color: var(--amber);
   font-weight: 600;
-  cursor: pointer;
-  transition: background 180ms var(--ease), border-color 180ms var(--ease);
 }
 
-.ai-pick__customBtn:hover {
-  background: rgba(212, 146, 74, 0.18);
-  border-color: var(--amber);
-}
-
-/* 직접 입력 + 보안 메모 두 버튼 묶음 */
-.ai-pick__customBtns {
+/* ---------- custom row — picker 끝의 입체적 진입 ---------- */
+.ai-pick__custom {
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* 보안 메모 — 같은 칩이지만 살짝 다른 무채 톤 (액센트는 직접입력 쪽이 강조) */
-.ai-pick__customBtn--note {
-  display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(232, 226, 207, 0.04);
-  border: 1px solid var(--line-strong);
-  color: var(--ink-secondary);
+  gap: 0.85rem;
+  padding: 0.8rem 1rem;
+  background:
+    linear-gradient(135deg, rgba(212, 146, 74, 0.08), rgba(212, 146, 74, 0.02));
+  border: 1px solid rgba(212, 146, 74, 0.32);
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 180ms var(--ease);
 }
 
-.ai-pick__customBtn--note:hover {
-  background: rgba(232, 226, 207, 0.08);
-  border-color: var(--ink-secondary);
-  color: var(--ink-primary);
+.ai-pick__custom:hover {
+  border-color: var(--amber);
+  background:
+    linear-gradient(135deg, rgba(212, 146, 74, 0.14), rgba(212, 146, 74, 0.04));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -10px rgba(212, 146, 74, 0.4);
 }
 
-.ai-pick__customBtn--note svg {
+.ai-pick__customMark {
   flex-shrink: 0;
-}
-
-/* note 모드 banner avatar — 카탈로그 아이콘 자리에 노트 아이콘 */
-.ai-form__noteAvatar {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgba(232, 226, 207, 0.04);
-  border: 1px solid var(--line-default);
-  border-radius: 8px;
-  color: var(--ink-secondary);
-}
-
-.ai-form__noteAvatar svg {
-  width: 18px;
-  height: 18px;
-}
-
-/* note 모드 banner — 살짝 무채 톤 강조 (login banner와 구분) */
-.ai-form__pickedBanner--note {
-  background: rgba(232, 226, 207, 0.025);
-}
-
-/* note 본문 textarea — 모노 가독성 + 적당한 크기 (스크롤 줄임) */
-.ai-form__textarea--note {
-  min-height: 150px;
+  background: rgba(212, 146, 74, 0.15);
+  border: 1px solid rgba(212, 146, 74, 0.4);
+  border-radius: 6px;
+  color: var(--amber);
   font-family: var(--font-mono);
-  font-size: 0.86rem;
-  line-height: 1.6;
-  letter-spacing: 0.005em;
+  font-size: 18px;
+  font-weight: 400;
 }
 
-/* ========================================================================
-   Step 2: 폼 (자격 증명 입력)
-   ======================================================================== */
-.ai-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;           /* 더 컴팩트 (스크롤 최소화) */
-}
-
-/* ===== FormField scoped 컴팩트 — Login/Register는 영향 X ===== */
-.ai-form .sb-field {
-  gap: 0.2rem;
-}
-
-.ai-form .sb-field__label {
-  font-size: 11.5px;
-}
-
-.ai-form .sb-field__input {
-  padding: 0.4rem 0 0.4rem;
-  font-size: 0.95rem;
-}
-
-.ai-form .sb-field__footer {
-  margin-top: 0.15rem;
-  min-height: 0;          /* 빈 footer 공간 제거 */
-  font-size: 11px;
-}
-
-.ai-form .sb-field__hint,
-.ai-form .sb-field__error {
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-/* picker step — title/lede 살짝 슬림 */
-.ai-pick__title {
-  font-size: 1.15rem;     /* 1.3 → 1.15 */
-}
-
-.ai-pick__lede {
-  font-size: 0.82rem;
-  margin-top: -0.3rem;
-}
-
-.ai-form__pickedBanner {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0.55rem 2.1rem 0.55rem 0.75rem;   /* 컴팩트, 우측 X 자리 유지 */
-  background: var(--bg-base);
-  border: 1px solid var(--line-default);
-  border-radius: 8px;
-}
-
-.ai-form__pickedInfo {
+.ai-pick__customText {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 1px;
   min-width: 0;
 }
 
-.ai-form__pickedName {
+.ai-pick__customTitle {
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink-primary);
+  letter-spacing: -0.005em;
+}
+
+.ai-pick__customSub {
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  color: var(--ink-muted);
+}
+
+.ai-pick__customArrow {
+  flex-shrink: 0;
+  color: var(--amber);
+  transition: transform 200ms var(--ease);
+}
+
+.ai-pick__custom:hover .ai-pick__customArrow {
+  transform: translateX(3px);
+}
+
+/* ========================================================================
+   Identity strip (form step) — 카탈로그 선택/메모/직접 입력 정체성 표시
+   ======================================================================== */
+.ai-id {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.65rem 0.65rem 0.85rem;
+  background: rgba(232, 226, 207, 0.022);
+  border: 1px solid var(--line-default);
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-id__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.ai-id__name {
   font-family: var(--font-sans);
   font-size: 0.95rem;
   font-weight: 600;
@@ -271,338 +314,706 @@
   text-overflow: ellipsis;
 }
 
-.ai-form__pickedHint {
+.ai-id__hint {
   font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--ink-muted);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-/* 우측 상단 X — 카탈로그 선택 해제 (= pick step으로 복귀) */
-.ai-form__pickedClose {
-  position: absolute;
-  top: 50%;
-  right: 0.5rem;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
   color: var(--ink-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background 180ms var(--ease), color 180ms var(--ease),
-              border-color 180ms var(--ease);
 }
 
-.ai-form__pickedClose:hover {
-  background: rgba(232, 226, 207, 0.06);
-  border-color: var(--line-default);
+.ai-id__change {
+  flex-shrink: 0;
+  padding: 0.32rem 0.7rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition:
+    border-color 160ms var(--ease),
+    color 160ms var(--ease),
+    background 160ms var(--ease);
+}
+
+.ai-id__change:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
+}
+
+/* ========================================================================
+   Section — 01/02 위계 (눈썹 라벨 + hairline rule)
+   ======================================================================== */
+.ai-sec {
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-sec__label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.7rem;
+}
+
+.ai-sec__num {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+
+.ai-sec__title {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+}
+
+.ai-sec__rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    var(--line-default),
+    var(--line-subtle) 60%,
+    transparent
+  );
+}
+
+.ai-sec__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* ---------- Collapsible 섹션 (추가 정보) ---------- */
+.ai-sec--extras {
+  border-top: 1px solid var(--line-subtle);
+  padding-top: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.ai-sec__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.4rem 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: opacity 160ms var(--ease);
+}
+
+.ai-sec__toggle:hover .ai-sec__title {
   color: var(--ink-primary);
 }
 
-.ai-form__field {
+.ai-sec__toggle:hover .ai-sec__chevron {
+  color: var(--amber);
+}
+
+.ai-sec__meta {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.ai-sec__metaCount {
+  color: var(--amber);
+  font-weight: 600;
+}
+
+.ai-sec__metaList {
+  letter-spacing: 0.04em;
+}
+
+.ai-sec__chevron {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+  transition: transform 220ms var(--ease), color 160ms var(--ease);
+}
+
+.ai-sec.is-open .ai-sec__chevron {
+  transform: rotate(90deg);
+  color: var(--amber);
+}
+
+.ai-sec__body--extras {
+  padding-top: 0.85rem;
+  animation: extrasIn 0.24s var(--ease) both;
+}
+
+@keyframes extrasIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ========================================================================
+   Field overrides — FormField scoped 컴팩트 + 추가 컨트롤
+   ======================================================================== */
+.ai .sb-field {
+  gap: 0.25rem;
+}
+
+.ai .sb-field__row {
+  min-height: 14px;
+}
+
+.ai .sb-field__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.ai .sb-field__input {
+  padding: 0.5rem 0 0.45rem;
+  font-size: 0.95rem;
+}
+
+.ai .sb-field__footer {
+  margin-top: 0.3rem;
+  min-height: 0;
+  font-size: 11px;
+}
+
+.ai .sb-field__hint,
+.ai .sb-field__error {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+/* ---------- 비-FormField 인풋 (select/textarea) ---------- */
+.ai-field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.ai-form__label {
-  font-family: var(--font-sans);
-  font-size: 11px;
+.ai-field__label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 500;
-  letter-spacing: 0.06em;
-  color: var(--ink-secondary);
-}
-
-.ai-form__lockHint {
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--ink-muted);
-  font-weight: 400;
+}
+
+.ai-field__lockHint {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
   text-transform: none;
-  letter-spacing: 0.005em;
+  color: var(--ink-faint);
+  font-weight: 400;
 }
 
-/* 복사 pill 버튼 (FormField trailing slot) */
-.ai-form__copyBtn {
-  padding: 0.25rem 0.6rem;
-  background: transparent;
-  border: 1px solid var(--line-strong);
-  border-radius: 4px;
-  color: var(--ink-secondary);
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: border-color 180ms var(--ease), color 180ms var(--ease),
-              background 180ms var(--ease);
+/* select with custom chevron */
+.ai-field__selectWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
 }
 
-.ai-form__copyBtn:hover {
-  border-color: var(--amber);
-  color: var(--amber);
-}
-
-.ai-form__copyBtn.is-on {
-  border-color: var(--success);
-  color: var(--success);
-  background: rgba(132, 168, 126, 0.06);
-}
-
-.ai-form__select {
+.ai-field__select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--line-default);
   color: var(--ink-primary);
   font-family: var(--font-sans);
   font-size: 0.95rem;
-  padding: 0.4rem 0 0.4rem;
+  padding: 0.5rem 1.5rem 0.45rem 0;
   outline: 0;
   cursor: pointer;
+  transition: border-color 160ms var(--ease);
 }
 
-.ai-form__select:focus {
+.ai-field__select:focus {
   border-bottom-color: var(--amber);
 }
 
-.ai-form__select:disabled {
+.ai-field__select:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.55;
   color: var(--ink-secondary);
 }
 
-.ai-form__select option {
+.ai-field__select option {
   background: var(--bg-elevated);
   color: var(--ink-primary);
+  font-family: var(--font-sans);
 }
 
-.ai-form__textarea {
+.ai-field__selectChevron {
+  position: absolute;
+  right: 0.1rem;
+  pointer-events: none;
+  color: var(--ink-muted);
+  transform: rotate(90deg);     /* 아래 방향 */
+}
+
+.ai-field__select:focus + .ai-field__selectChevron {
+  color: var(--amber);
+}
+
+/* inline select (note 모드 — 라벨 옆 같은 줄) */
+.ai-field--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.ai-field--inline .ai-field__label {
+  flex: 0 0 auto;
+}
+
+.ai-field__selectWrap--inline {
+  flex: 1;
+}
+
+.ai-field--inline .ai-field__select {
+  border-bottom: 0;
+  padding: 0.3rem 1.5rem 0.3rem 0;
+}
+
+/* textarea */
+.ai-field__textarea {
   background: transparent;
   border: 1px solid var(--line-default);
   border-radius: 6px;
   color: var(--ink-primary);
   font-family: var(--font-sans);
   font-size: 0.92rem;
-  padding: 0.5rem 0.65rem;
+  padding: 0.6rem 0.7rem;
   outline: 0;
   resize: vertical;
-  line-height: 1.5;
+  line-height: 1.55;
+  transition: border-color 160ms var(--ease);
 }
 
-.ai-form__textarea:focus {
+.ai-field__textarea:focus {
   border-color: var(--amber);
 }
 
-.ai-form__pwRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 0.6rem;
-}
-
-.ai-form__pwField {
-  flex: 1;
-  min-width: 0;
-}
-
-.ai-form__genBtn {
-  flex: 0 0 auto;
-  padding: 0.55rem 0.85rem;
-  background: rgba(212, 146, 74, 0.08);
-  border: 1px solid rgba(212, 146, 74, 0.32);
-  border-radius: 6px;
-  color: var(--amber);
-  font-family: var(--font-sans);
-  font-size: 0.78rem;
-  font-weight: 600;
+.ai-field__textarea--note {
+  min-height: 200px;
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.65;
   letter-spacing: 0.005em;
-  cursor: pointer;
-  transition: background 200ms var(--ease), border-color 200ms var(--ease);
-  margin-bottom: 18px;
+  background: rgba(232, 226, 207, 0.018);
 }
 
-.ai-form__genBtn:hover {
-  background: rgba(212, 146, 74, 0.18);
-  border-color: var(--amber);
+/* ========================================================================
+   Password field — trigger + popover + strength
+   ======================================================================== */
+.ai-pw {
+  position: relative;
 }
 
-/* FormField trailing 슬롯 안에 들어가는 작은 트리거 버튼 — 라벨 옆 우측 */
-.ai-form__genTrigger {
-  padding: 0.2rem 0.55rem;
-  background: rgba(212, 146, 74, 0.08);
-  border: 1px solid rgba(212, 146, 74, 0.35);
-  border-radius: 5px;
-  color: var(--amber);
+/* hint row — 강도 미터(좌) + 자동 생성 link(우) 한 줄 */
+.ai-pw__hintRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 14px;
+}
+
+/* 자동 생성 trigger — 강조 작은 링크. 활성 시 amber 톤 살짝 강화 */
+.ai-pw__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.4rem 0.18rem 0.35rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--ink-muted);
   font-family: var(--font-sans);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   text-transform: none;
   cursor: pointer;
-  transition: background 160ms var(--ease), border-color 160ms var(--ease),
-              color 160ms var(--ease);
+  transition: all 160ms var(--ease);
 }
 
-.ai-form__genTrigger:hover {
-  background: rgba(212, 146, 74, 0.18);
-  border-color: var(--amber);
-  color: var(--amber-glow);
+.ai-pw__trigger:hover {
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
 }
 
-.ai-form__genTrigger.is-on,
-.ai-form__genTrigger[aria-pressed="true"] {
-  background: rgba(212, 146, 74, 0.2);
-  border-color: var(--amber);
-  color: var(--amber-glow);
+.ai-pw__trigger.is-on,
+.ai-pw__trigger[aria-pressed="true"] {
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.1);
+  border-color: rgba(212, 146, 74, 0.3);
 }
 
-.ai-form__actions {
+.ai-pw__trigger svg {
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.ai-pw__hintEmpty {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ---------- Strength meter ---------- */
+.ai-pw__strength {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.ai-pw__strengthBars {
   display: flex;
-  gap: 0.7rem;
-  margin-top: 0.5rem;
+  gap: 2px;
 }
 
-.ai-form__cancel {
+.ai-pw__strengthBar {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+  background: rgba(232, 226, 207, 0.08);
+  transition: background 200ms var(--ease);
+}
+
+.ai-pw__strength.is-tone-1 .ai-pw__strengthBar.is-on,
+.ai-pw__strength.is-tone-2 .ai-pw__strengthBar.is-on { background: var(--danger); }
+.ai-pw__strength.is-tone-3 .ai-pw__strengthBar.is-on { background: var(--warning); }
+.ai-pw__strength.is-tone-4 .ai-pw__strengthBar.is-on,
+.ai-pw__strength.is-tone-5 .ai-pw__strengthBar.is-on { background: var(--success); }
+
+.ai-pw__strengthLabel {
+  font-variant-numeric: tabular-nums;
+}
+
+.ai-pw__strength.is-tone-1 .ai-pw__strengthLabel,
+.ai-pw__strength.is-tone-2 .ai-pw__strengthLabel { color: var(--danger); }
+.ai-pw__strength.is-tone-3 .ai-pw__strengthLabel { color: var(--warning); }
+.ai-pw__strength.is-tone-4 .ai-pw__strengthLabel,
+.ai-pw__strength.is-tone-5 .ai-pw__strengthLabel { color: var(--success); }
+
+/* ---------- Popover ---------- */
+/* portal로 body에 렌더 — position:fixed로 viewport 좌표. top/right는 JS가 채움.
+   이 덕분에 .sb-modal__card overflow에 영향 안 줌 (모달 스크롤바 안 생김) */
+.ai-pw__popover {
+  position: fixed;
+  width: min(360px, calc(100vw - 2rem));
+  z-index: 200;            /* sb-modal(100)보다 위 */
+  padding: 0.85rem 0.95rem 1rem;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  box-shadow:
+    0 24px 60px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(212, 146, 74, 0.08);
+  animation: popoverIn 0.18s var(--ease) both;
+}
+
+@keyframes popoverIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ai-pw__popoverHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.ai-pw__popoverTitle {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--amber);
+}
+
+.ai-pw__popoverClose {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: color 160ms var(--ease), background 160ms var(--ease);
+}
+
+.ai-pw__popoverClose:hover {
+  color: var(--ink-primary);
+  background: rgba(232, 226, 207, 0.05);
+}
+
+/* ========================================================================
+   Note form — 미니멀
+   ======================================================================== */
+.ai-note {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ai-note__contentLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.ai-note__counter {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ========================================================================
+   Footer — sticky 액션 영역
+   ======================================================================== */
+.ai__foot {
+  position: sticky;
+  bottom: -1.2rem;     /* card의 padding-bottom 만큼 음수 → 카드 바닥과 flush */
+  display: flex;
+  gap: 0.6rem;
+  margin: 0.5rem -1.4rem -1.2rem;   /* 가로/하단 padding 음수로 카드 풀폭 + 바닥까지 */
+  padding: 0.95rem 1.4rem 1.2rem;
+  background:
+    linear-gradient(180deg,
+      rgba(17, 23, 42, 0.6) 0%,
+      var(--bg-elevated) 30%);
+  border-top: 1px solid var(--line-subtle);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2;
+}
+
+.ai__cancel {
   flex: 0 0 auto;
-  padding: 0.85rem 1.5rem;
+  padding: 0.7rem 1.3rem;
   background: transparent;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--ink-secondary);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 600;
+  letter-spacing: -0.005em;
   cursor: pointer;
-  transition: border-color 200ms var(--ease), color 200ms var(--ease);
+  transition:
+    border-color 180ms var(--ease),
+    color 180ms var(--ease),
+    background 180ms var(--ease);
 }
 
-.ai-form__cancel:hover:not(:disabled) {
+.ai__cancel:hover:not(:disabled) {
   border-color: var(--ink-secondary);
   color: var(--ink-primary);
+  background: rgba(232, 226, 207, 0.025);
 }
 
-.ai-form__cancel:disabled {
+.ai__cancel:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.ai__foot .sb-button {
+  flex: 1;
 }
 
 /* ====================================================================
    Responsive
    ==================================================================== */
 @media (max-width: 640px) {
-  .ai-pick__grid {
-    grid-template-columns: repeat(auto-fill, minmax(95px, 1fr));
-    gap: 0.5rem;
+  .ai {
+    gap: 0.95rem;
   }
 
-  .ai-pick__cell {
-    padding: 0.7rem 0.4rem;
+  .ai__rail {
+    left: -0.95rem;
+    top: -2.8rem;
+    bottom: -0.95rem;
+  }
+
+  .ai__title {
+    font-size: 1.2rem;
+  }
+
+  .ai__eyebrow {
+    font-size: 9.5px;
+  }
+
+  /* picker grid — 더 빡빡 */
+  .ai-pick__grid {
+    grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+    gap: 0.35rem;
   }
 
   .ai-pick__cellName {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
   }
 
-  .ai-pick__cellCat {
+  .ai-pick__searchInput {
+    font-size: 16px;       /* iOS zoom 방지 */
+    padding: 0.65rem 3rem 0.65rem 2.4rem;
+    min-height: 44px;
+  }
+
+  .ai-pick__custom {
+    padding: 0.7rem 0.85rem;
+  }
+
+  .ai-pick__customMark {
+    width: 28px;
+    height: 28px;
+    font-size: 16px;
+  }
+
+  /* Identity — 변경 버튼 더 작게 */
+  .ai-id {
+    padding: 0.55rem 0.6rem 0.55rem 0.7rem;
+    gap: 0.6rem;
+  }
+
+  .ai-id__name {
+    font-size: 0.9rem;
+  }
+
+  .ai-id__change {
+    padding: 0.3rem 0.6rem;
+    min-height: 36px;
+  }
+
+  /* select / textarea — iOS zoom 방지 */
+  .ai-field__select {
+    font-size: 16px;
+    padding: 0.5rem 1.5rem 0.45rem 0;
+  }
+
+  .ai-field__textarea {
+    font-size: 16px;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .ai-field__textarea--note {
+    font-size: 16px;
+  }
+
+  /* Popover — bottom sheet 모드 (JS inline style 덮어쓰기) */
+  .ai-pw__popover {
+    position: fixed !important;
+    top: auto !important;
+    right: 0.95rem !important;
+    left: 0.95rem !important;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 0.95rem) !important;
+    width: auto !important;
+    max-width: none;
+    padding: 1rem 1rem 1.1rem;
+    border-radius: 12px;
+    box-shadow: 0 -16px 60px -10px rgba(0, 0, 0, 0.85);
+    animation: popoverInMobile 0.22s var(--ease) both;
+  }
+
+  @keyframes popoverInMobile {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .ai-pw__popoverClose {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ai-pw__trigger {
+    padding: 0.32rem 0.6rem 0.32rem 0.5rem;
+    font-size: 11px;
+    min-height: 30px;
+  }
+
+  /* Footer 액션 — 모바일 가로 유지 (취소+저장 둘 다 보이도록) */
+  .ai__foot {
+    bottom: -0.95rem;
+    margin: 0.5rem -0.95rem -0.95rem;
+    padding: 0.75rem 0.95rem calc(0.95rem + env(safe-area-inset-bottom, 0px));
+    gap: 0.5rem;
+  }
+
+  .ai__cancel {
+    flex: 0 0 auto;
+    padding: 0.7rem 1rem;
+    font-size: 0.85rem;
+    min-height: 44px;
+  }
+
+  .ai-sec__label,
+  .ai-sec__toggle {
     font-size: 10px;
   }
 
-  .ai-pick__title {
-    font-size: 1.05rem;
+  .ai-sec__metaList,
+  .ai-sec__metaCount {
+    font-size: 9.5px;
   }
 
-  .ai-pick__lede {
-    font-size: 0.83rem;
-  }
-
-  .ai-pick__customRow {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.5rem;
-  }
-
-  .ai-form__pickedBanner {
-    padding: 0.65rem 0.75rem;
-    gap: 0.55rem;
-  }
-
-  .ai-form__pickedName {
-    font-size: 0.92rem;
-  }
-
-  .ai-form__pickedHint {
-    font-size: 11px;
-  }
-
-  /* 액션 버튼 영역 — 세로 스택 (모바일 친화) */
-  .ai-form__actions {
-    flex-direction: column-reverse;
-    gap: 0.5rem;
-  }
-
-  .ai-form__actions .sb-button,
-  .ai-form__actions .ai-form__cancel {
-    width: 100%;
-  }
-
-  /* 비밀번호 input + 생성 버튼 — 가로배치는 input을 짓누름. 위/아래 스택. */
-  .ai-form__pwRow {
-    flex-wrap: wrap;
-    gap: 0.45rem;
-  }
-
-  .ai-form__pwField {
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .ai-form__genBtn {
-    flex: 1 1 100%;
-    margin-bottom: 0;
-    padding: 0.6rem 0.85rem;
-    min-height: 42px;       /* 터치 보강 */
-    font-size: 0.82rem;
-  }
-
-  /* form 필드 라벨 — 11px → 더 진하게는 X, 그대로 사용. textarea는 글자 16px 강제 */
-  .ai-form__textarea {
-    font-size: 16px;        /* iOS zoom 방지 */
-    padding: 0.65rem 0.75rem;
-  }
-
-  /* select도 16px */
-  .ai-form__select {
-    font-size: 16px;
-    padding: 0.6rem 0 0.55rem;
-  }
-
-  /* 카탈로그 picked banner — 살짝 슬림 */
-  .ai-form__pickedClose {
-    width: 32px;
-    height: 32px;
+  .ai-sec__body {
+    gap: 0.65rem;
   }
 }
 
+/* 매우 좁은 폰 (≤360) */
 @media (max-width: 360px) {
   .ai-pick__grid {
-    grid-template-columns: repeat(auto-fill, minmax(82px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
   }
-}
 
-/* iOS Safari: 검색창 포커스 시 자동 zoom 방지 (모바일에서만 16px 강제) */
-@media (max-width: 640px) {
-  .ai-pick__search {
-    font-size: 16px;
-    padding: 0.6rem 0.85rem;
-    min-height: 42px;
+  .ai-pick__cellName {
+    font-size: 0.7rem;
   }
-}
-
-.ai-form__actions .sb-button {
-  flex: 1;
 }
