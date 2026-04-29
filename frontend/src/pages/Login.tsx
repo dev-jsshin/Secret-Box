@@ -294,6 +294,7 @@ export default function Login() {
   return (
     <div className="page page--auth">
       <main className="login">
+        <div className="login__main">
         <section className="login__brand rise delay-1">
           <span className="login__halo" aria-hidden />
           <Logo size={42} pulsing={mutation.isPending} />
@@ -301,7 +302,7 @@ export default function Login() {
             <em>SecretBox</em>를 엽니다
           </h1>
           <p className="login__tagline">
-            오직 당신만 아는 비밀번호 저장소
+            오직 당신만 아는 비밀 보관함
           </p>
         </section>
 
@@ -446,6 +447,7 @@ export default function Login() {
           </Link>
         </p>
         )}
+        </div>
         </div>
 
         <footer className="login__foot rise delay-6">

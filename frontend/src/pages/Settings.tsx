@@ -11,6 +11,7 @@ import Sidebar from '../components/Sidebar';
 import MobileTabBar from '../components/MobileTabBar';
 import TwoFactorCard from '../components/TwoFactorCard';
 import ActivityCard from '../components/ActivityCard';
+import BackupCard from '../components/BackupCard';
 import { scorePassword } from '../lib/passwordTools';
 
 import { authApi } from '../api/auth';
@@ -32,11 +33,12 @@ interface ErrorAlert {
   message?: string;
 }
 
-type SettingsTab = 'account' | 'security' | 'activity';
+type SettingsTab = 'account' | 'backup' | 'security' | 'activity';
 
 const TABS: { id: SettingsTab; label: string; sub: string }[] = [
-  { id: 'account',  label: '계정',   sub: '이메일과 보관함 비밀번호' },
-  { id: 'security', label: '보안',   sub: '잠금 · 2단계 인증 · 활성 세션' },
+  { id: 'account',  label: '계정',   sub: '이메일과 마스터 비밀번호 변경' },
+  { id: 'backup',   label: '백업',   sub: '보관함 내보내기 · 가져오기' },
+  { id: 'security', label: '보안',   sub: '자동 잠금 · 2단계 인증 · 활성 세션' },
   { id: 'activity', label: '활동',   sub: '최근 인증·세션·항목 변경 내역' },
 ];
 
@@ -47,9 +49,10 @@ export default function Settings() {
   const email = useSessionStore((s) => s.email);
   const unlockMaterial = useSessionStore((s) => s.unlockMaterial);
 
-  // URL ?tab=security 와 동기화 — 새로고침/공유 링크 보존
+  // URL ?tab=... 와 동기화 — 새로고침/공유 링크 보존
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const t = new URLSearchParams(location.search).get('tab');
+    if (t === 'backup') return 'backup';
     if (t === 'security') return 'security';
     if (t === 'activity') return 'activity';
     return 'account';
@@ -302,6 +305,8 @@ export default function Settings() {
         </section>
         </>)}
 
+        {activeTab === 'backup' && <BackupCard />}
+
         {activeTab === 'security' && (<>
         {recoveryUsed && (
           <div className="settings__banner">
@@ -319,7 +324,7 @@ export default function Settings() {
           <h2 className="settings__cardTitle">자동 잠금</h2>
           <div className="settings__notice">
             <ClockIcon />
-            <span>일정 시간 활동이 없으면 보관함이 자동으로 잠깁니다. 다시 열려면 마스터 비밀번호만 입력하면 돼요.</span>
+            <span>일정 시간 활동이 없으면 자동으로 잠깁니다.</span>
           </div>
           <div className="settings__lockOptions">
             {LOCK_OPTIONS.map((opt) => {
@@ -354,7 +359,7 @@ export default function Settings() {
           <h2 className="settings__cardTitle">활성 세션</h2>
           <div className="settings__notice">
             <ShieldIcon />
-            <span>이 계정으로 로그인된 모든 기기 목록입니다. 의심스러운 항목이 있으면 끊으세요.</span>
+            <span>로그인된 기기 목록 — 의심스러우면 끊으세요.</span>
           </div>
 
           {sessionsQuery.isPending && (
@@ -411,9 +416,9 @@ export default function Settings() {
         {activeTab === 'activity' && <ActivityCard />}
 
         {activeTab === 'account' && (<>
-        {/* 보관함 비밀번호 변경 */}
+        {/* 마스터 비밀번호 변경 — 계정 탭의 두 번째 카드 */}
         <section className="settings__card rise delay-4">
-          <h2 className="settings__cardTitle">보관함 비밀번호 변경</h2>
+          <h2 className="settings__cardTitle">마스터 비밀번호 변경</h2>
 
           <div className="settings__notice">
             <LockIcon />

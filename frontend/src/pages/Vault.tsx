@@ -333,16 +333,16 @@ export default function Vault() {
           <section className="vault__hero rise delay-2">
             {stats.total === 0 && itemType === 'note' ? (
               <h1 className="vault__heroTitle">
-                첫 <em>보안 메모</em>를<br />작성해보세요.
+                첫 <em>보안 메모</em>를<br />{' '}작성해보세요.
               </h1>
             ) : stats.total === 0 ? (
               <h1 className="vault__heroTitle">
-                첫 <em>비밀</em>을<br />보관해보세요.
+                첫 <em>비밀</em>을<br />{' '}보관해보세요.
               </h1>
             ) : (
               <>
                 <h1 className="vault__heroTitle">
-                  현재 <em>{stats.total}개</em>의 {typeLabel}가<br />
+                  현재 <em>{stats.total}개</em>의 {typeLabel}가<br />{' '}
                   안전하게 잠겨있어요.
                 </h1>
                 <ul className="vault__filters" role="tablist" aria-label="카테고리 필터">

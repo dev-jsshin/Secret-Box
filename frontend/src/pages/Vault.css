@@ -747,9 +747,10 @@
     display: none;
   }
 
-  /* 콘텐츠 하단 — 탭바(56px) + 탭바 패딩(0.7rem ≈ 11px) + 여백(20px) 합산 + safe-area */
+  /* 콘텐츠 하단 — 탭바(56) + 패딩(11) + 충분한 여백(50) → 마지막 카드가 탭바와
+     겹치지 않고 시원하게 보이도록 + safe-area */
   .vault__content {
-    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
   }
 
   /* 헤더 — 영역 압축 */

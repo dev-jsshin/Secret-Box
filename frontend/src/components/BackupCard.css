@@ -1,0 +1,227 @@
+/* ========================================================================
+   BackupCard — settings__card 안에 들어가는 백업/복원 UI
+   ======================================================================== */
+.bk__lede {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--ink-secondary);
+}
+
+.bk__lede strong {
+  color: var(--ink-primary);
+  font-weight: 600;
+}
+
+/* 두 컬럼 (내보내기 / 가져오기) — 데스크톱 가로, 모바일 세로 */
+.bk__row {
+  display: flex;
+  gap: 1rem;
+  align-items: stretch;
+  margin-top: 0.3rem;
+}
+
+.bk__col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.bk__divider {
+  width: 1px;
+  background: var(--line-subtle);
+  flex-shrink: 0;
+}
+
+.bk__label {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.bk__hint {
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+  flex: 1;
+}
+
+.bk__hint strong {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.bk__fileHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* secondary 톤 버튼 — sb-button(주 액션)과 구분되는 액자형 */
+.bk__btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 1.05rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: border-color 180ms var(--ease), color 180ms var(--ease),
+              background 180ms var(--ease);
+}
+
+.bk__btn:hover:not(:disabled) {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: rgba(212, 146, 74, 0.06);
+}
+
+.bk__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .bk__btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 44px;     /* 터치 */
+  }
+}
+
+/* ---------- 가져오기 모달 폼 ---------- */
+.bk__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.bk__formTitle {
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink-primary);
+  word-break: break-all;
+}
+
+.bk__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--bg-base);
+  border: 1px solid var(--line-default);
+  border-radius: 6px;
+}
+
+.bk__formRow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+}
+
+.bk__formRow dt {
+  flex: 0 0 88px;
+  color: var(--ink-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+}
+
+.bk__formRow dd {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink-primary);
+  word-break: break-all;
+  font-family: var(--font-mono);
+  font-size: 0.83rem;
+}
+
+.bk__formActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+
+.bk__cancel {
+  flex: 0 0 auto;
+  padding: 0.7rem 1.4rem;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  color: var(--ink-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 200ms var(--ease), color 200ms var(--ease);
+}
+
+.bk__cancel:hover:not(:disabled) {
+  border-color: var(--ink-secondary);
+  color: var(--ink-primary);
+}
+
+.bk__cancel:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.bk__formActions .sb-button {
+  flex: 1;
+}
+
+/* ====================================================================
+   Responsive — 좁은 화면에선 두 컬럼 → 위/아래 스택
+   ==================================================================== */
+@media (max-width: 640px) {
+  .bk__row {
+    flex-direction: column;
+    gap: 0.85rem;
+  }
+
+  .bk__divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .bk__formRow {
+    flex-wrap: wrap;
+  }
+
+  .bk__formRow dt {
+    flex: 0 0 100%;
+    font-size: 11px;
+  }
+
+  .bk__formRow dd {
+    font-size: 0.8rem;
+  }
+
+  .bk__formActions {
+    flex-direction: column-reverse;
+  }
+
+  .bk__cancel,
+  .bk__formActions .sb-button {
+    width: 100%;
+  }
+}

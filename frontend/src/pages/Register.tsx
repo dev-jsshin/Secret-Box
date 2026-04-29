@@ -165,6 +165,7 @@ export default function Register() {
   return (
     <div className="page page--auth">
       <main className="register">
+        <div className="register__main">
         <section className="register__brand rise delay-1">
           <span className="register__halo" aria-hidden />
           <Logo size={42} pulsing={mutation.isPending} />
@@ -256,6 +257,7 @@ export default function Register() {
             로그인 →
           </Link>
         </p>
+        </div>
         </div>
 
         <footer className="register__foot rise delay-7">
