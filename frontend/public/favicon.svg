@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+  <!-- 다크 라운드 배경 — 라이트 탭바에서도 식별 가능 -->
+  <rect width="40" height="40" rx="7" fill="#0A0E1A"/>
+  <!-- 외부 chamber (Logo의 사각형 — 두껍게) -->
+  <rect x="6" y="6" width="28" height="28" rx="1.5"
+        stroke="#D4924A" stroke-width="2" fill="none"/>
+  <!-- tumbler ring -->
+  <circle cx="20" cy="20" r="7"
+          stroke="#D4924A" stroke-width="2" fill="none"/>
+  <!-- center pip -->
+  <circle cx="20" cy="20" r="2.4" fill="#D4924A"/>
+</svg>
