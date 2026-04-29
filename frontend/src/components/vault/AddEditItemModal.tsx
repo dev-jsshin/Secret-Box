@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Modal from '../Modal';
 import Button from '../Button';
 import FormField from '../FormField';
+import PasswordGenerator from '../PasswordGenerator';
 import Avatar from './Avatar';
 
 import {
@@ -64,6 +65,7 @@ export default function AddEditItemModal({
   const [content, setContent] = useState('');
   const [totpSecret, setTotpSecret] = useState('');
   const [totpError, setTotpError] = useState('');
+  const [showPwGen, setShowPwGen] = useState(false);
 
   const { data: catalog } = useQuery({
     queryKey: ['catalog'],
@@ -465,7 +467,28 @@ export default function AddEditItemModal({
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               copyable
+              trailing={
+                <button
+                  type="button"
+                  className={
+                    'ai-form__genTrigger'
+                    + (showPwGen ? ' is-on' : '')
+                  }
+                  onClick={() => setShowPwGen((v) => !v)}
+                  aria-pressed={showPwGen}
+                  aria-controls="pw-generator-panel"
+                  title={showPwGen ? '생성기 닫기' : '자동 생성'}
+                >
+                  자동 생성
+                </button>
+              }
             />
+
+            {showPwGen && (
+              <div id="pw-generator-panel">
+                <PasswordGenerator onGenerate={(pw) => setPassword(pw)} />
+              </div>
+            )}
 
             <FormField
               id="ai-totp"
