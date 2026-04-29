@@ -660,8 +660,9 @@
   flex-shrink: 0;
 }
 
-/* ---------- note 항목 카드 ---------- */
-.vault__noteAvatar {
+/* ---------- 타입별 항목 카드 ---------- */
+/* 공통 type avatar — note/card/wifi/apikey 모두 같은 사이즈/모양, 색만 분기 */
+.vault__typeAvatar {
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -674,19 +675,108 @@
   color: var(--ink-secondary);
 }
 
-/* note 카드 — 카테고리 칩을 "메모"로 살짝 다른 톤 */
-.vault__card--note .vault__cardCat {
-  color: var(--ink-secondary);
-  border-color: var(--line-strong);
-  background: rgba(232, 226, 207, 0.025);
+.vault__typeAvatar--card {
+  background: rgba(212, 146, 74, 0.06);
+  border-color: rgba(212, 146, 74, 0.22);
+  color: var(--amber);
 }
 
-/* note 카드 sub line — content preview, 모노 톤 */
+.vault__typeAvatar--wifi {
+  background: rgba(80, 156, 196, 0.08);
+  border-color: rgba(80, 156, 196, 0.25);
+  color: #7ab8d6;
+}
+
+.vault__typeAvatar--apikey.vault__typeAvatar--danger {
+  background: rgba(201, 115, 115, 0.08);
+  border-color: rgba(201, 115, 115, 0.3);
+  color: var(--danger);
+}
+
+.vault__typeAvatar--apikey.vault__typeAvatar--warning {
+  background: rgba(217, 168, 97, 0.08);
+  border-color: rgba(217, 168, 97, 0.3);
+  color: var(--warning);
+}
+
+.vault__typeAvatar--apikey.vault__typeAvatar--neutral {
+  background: rgba(132, 168, 126, 0.08);
+  border-color: rgba(132, 168, 126, 0.3);
+  color: var(--success);
+}
+
+/* 타입별 카테고리 칩 톤 */
+.vault__card--note .vault__cardCat,
+.vault__card--card .vault__cardCat,
+.vault__card--wifi .vault__cardCat,
+.vault__card--apikey .vault__cardCat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-secondary);
+  border-color: var(--line-strong);
+  background: rgba(232, 226, 207, 0.02);
+}
+
+/* sub line variants */
 .vault__cardUser--note {
   font-family: var(--font-mono);
   font-size: 0.76rem;
   letter-spacing: 0.01em;
   color: var(--ink-faint);
+}
+
+.vault__cardUser--mono {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vault__cardSep {
+  color: var(--ink-faint);
+  margin: 0 0.1rem;
+}
+
+.vault__apiKeyId {
+  font-family: var(--font-mono);
+  color: var(--ink-secondary);
+  font-size: 0.76rem;
+}
+
+/* env 칩 (API Key sub line 안) */
+.vault__envChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  border: 1px solid;
+}
+
+.vault__envChip--danger {
+  color: var(--danger);
+  border-color: rgba(201, 115, 115, 0.4);
+  background: rgba(201, 115, 115, 0.1);
+}
+
+.vault__envChip--warning {
+  color: var(--warning);
+  border-color: rgba(217, 168, 97, 0.4);
+  background: rgba(217, 168, 97, 0.1);
+}
+
+.vault__envChip--neutral {
+  color: var(--success);
+  border-color: rgba(132, 168, 126, 0.4);
+  background: rgba(132, 168, 126, 0.1);
 }
 
 /* ---------- footer (bottom sticky) ---------- */

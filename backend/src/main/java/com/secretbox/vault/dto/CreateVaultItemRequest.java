@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 
 public record CreateVaultItemRequest(
     @NotBlank
-    @Pattern(regexp = "login|note|card", message = "지원하지 않는 itemType")
+    @Pattern(regexp = "login|note|card|wifi|apikey", message = "지원하지 않는 itemType")
     String itemType,
 
     @NotBlank @Size(max = 65536)

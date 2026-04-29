@@ -1,59 +1,78 @@
 import { Link } from 'react-router-dom';
 
 import Logo from './Logo';
+import { ItemTypeKeyIcon, ItemTypeNoteIcon, ItemTypeCardIcon, ItemTypeWifiIcon, ItemTypeApiIcon } from './ItemTypeIcons';
 
 import './Sidebar.css';
 
-export type SidebarSection = 'login' | 'note' | 'settings';
+export type VaultType = 'login' | 'note' | 'card' | 'wifi' | 'apikey';
+export type SidebarSection = VaultType | 'settings';
+
+export interface VaultCounts {
+  login: number;
+  note: number;
+  card: number;
+  wifi: number;
+  apikey: number;
+}
 
 interface SidebarProps {
   current: SidebarSection;
-  counts: { login: number; note: number };
+  counts: VaultCounts;
   email: string;
   onLogout: () => void;
 }
 
+interface NavMeta {
+  type: VaultType;
+  label: string;
+  href: string;
+  Icon: React.ComponentType<{ size?: number }>;
+}
+
+export const VAULT_NAV: NavMeta[] = [
+  { type: 'login',  label: '패스워드', href: '/vault',              Icon: ItemTypeKeyIcon  },
+  { type: 'note',   label: '메모',    href: '/vault?type=note',    Icon: ItemTypeNoteIcon },
+  { type: 'card',   label: '카드',    href: '/vault?type=card',    Icon: ItemTypeCardIcon },
+  { type: 'wifi',   label: '와이파이', href: '/vault?type=wifi',    Icon: ItemTypeWifiIcon },
+  { type: 'apikey', label: 'API Key', href: '/vault?type=apikey',  Icon: ItemTypeApiIcon  },
+];
+
 /**
- * 데스크톱(≥920) 220px 풀, 태블릿(768~919) 64px 아이콘 전용.
+ * 데스크톱(≥920) 240px 풀, 태블릿(768~919) 64px 아이콘 전용.
  * 모바일(≤640)에선 display:none — MobileTabBar가 대신 등장.
  */
 export default function Sidebar({ current, counts, email, onLogout }: SidebarProps) {
   return (
     <aside className="sidebar" aria-label="메인 내비게이션">
       <div className="sidebar__brand">
-        <Logo size={26} />
+        <Logo size={24} />
         <span className="sidebar__wordmark">SecretBox</span>
       </div>
 
       <nav className="sidebar__nav">
-        <span className="sidebar__sectionLabel">보관함</span>
+        <span className="sidebar__sectionLabel">
+          <span className="sidebar__sectionNum">5</span>
+          <span>보관함</span>
+        </span>
         <ul className="sidebar__navList">
-          <li>
-            <Link
-              to="/vault"
-              className={
-                'sidebar__navItem' + (current === 'login' ? ' is-active' : '')
-              }
-              title="패스워드"
-            >
-              <KeyIcon />
-              <span className="sidebar__navText">패스워드</span>
-              <span className="sidebar__navCount">{counts.login}</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/vault?type=note"
-              className={
-                'sidebar__navItem' + (current === 'note' ? ' is-active' : '')
-              }
-              title="보안 메모"
-            >
-              <NoteIcon />
-              <span className="sidebar__navText">메모</span>
-              <span className="sidebar__navCount">{counts.note}</span>
-            </Link>
-          </li>
+          {VAULT_NAV.map(({ type, label, href, Icon }) => {
+            const count = counts[type];
+            const isActive = current === type;
+            return (
+              <li key={type}>
+                <Link
+                  to={href}
+                  className={'sidebar__navItem' + (isActive ? ' is-active' : '')}
+                  title={label}
+                >
+                  <Icon size={18} />
+                  <span className="sidebar__navText">{label}</span>
+                  <span className="sidebar__navCount">{count}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </nav>
 
@@ -90,30 +109,6 @@ export default function Sidebar({ current, counts, email, onLogout }: SidebarPro
 }
 
 // ---------- inline icons ----------
-function KeyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-         stroke="currentColor" strokeWidth="1.6"
-         strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="15" r="4" />
-      <line x1="10.83" y1="12.17" x2="20" y2="3" />
-      <line x1="17" y1="6" x2="20" y2="9" />
-      <line x1="14" y1="9" x2="17" y2="12" />
-    </svg>
-  );
-}
-function NoteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-         stroke="currentColor" strokeWidth="1.6"
-         strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 3 14 8 19 8" />
-      <line x1="9" y1="13" x2="15" y2="13" />
-      <line x1="9" y1="17" x2="13" y2="17" />
-    </svg>
-  );
-}
 function SettingsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none"

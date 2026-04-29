@@ -94,10 +94,13 @@ export default function Settings() {
     queryKey: ['vault-counts'],
     queryFn: async () => {
       const { items } = await vaultApi.list();
-      let login = 0;
-      let note = 0;
-      items.forEach((i) => (i.itemType === 'note' ? note++ : login++));
-      return { login, note };
+      const c = { login: 0, note: 0, card: 0, wifi: 0, apikey: 0 };
+      items.forEach((i) => {
+        const t = i.itemType;
+        if (t === 'note' || t === 'card' || t === 'wifi' || t === 'apikey') c[t]++;
+        else c.login++;
+      });
+      return c;
     },
     staleTime: 1000 * 30,
   });
@@ -259,7 +262,7 @@ export default function Settings() {
     <div className="page page--vault">
       <Sidebar
         current="settings"
-        counts={countsQuery.data ?? { login: 0, note: 0 }}
+        counts={countsQuery.data ?? { login: 0, note: 0, card: 0, wifi: 0, apikey: 0 }}
         email={email ?? ''}
         onLogout={handleLogout}
       />
@@ -507,7 +510,10 @@ export default function Settings() {
         message={errorAlert?.message}
       />
 
-      <MobileTabBar current="settings" />
+      <MobileTabBar
+        current="settings"
+        counts={countsQuery.data ?? { login: 0, note: 0, card: 0, wifi: 0, apikey: 0 }}
+      />
     </div>
   );
 }

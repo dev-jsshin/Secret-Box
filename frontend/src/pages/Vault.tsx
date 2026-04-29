@@ -4,8 +4,15 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import Logo from '../components/Logo';
 import AlertModal from '../components/AlertModal';
-import Sidebar from '../components/Sidebar';
+import Sidebar, { type VaultType, type VaultCounts } from '../components/Sidebar';
 import MobileTabBar from '../components/MobileTabBar';
+import {
+  ItemTypeKeyIcon,
+  ItemTypeNoteIcon,
+  ItemTypeCardIcon,
+  ItemTypeWifiIcon,
+  ItemTypeApiIcon,
+} from '../components/ItemTypeIcons';
 import Avatar from '../components/vault/Avatar';
 import AddEditItemModal from '../components/vault/AddEditItemModal';
 import ItemHistoryModal from '../components/vault/ItemHistoryModal';
@@ -46,6 +53,32 @@ interface ConfirmDelete {
   label: string;
 }
 
+const VALID_TYPES: VaultType[] = ['login', 'note', 'card', 'wifi', 'apikey'];
+
+function parseType(raw: string | null): VaultType {
+  if (raw && (VALID_TYPES as string[]).includes(raw)) return raw as VaultType;
+  return 'login';
+}
+
+const TYPE_LABELS: Record<VaultType, string> = {
+  login: '패스워드',
+  note: '메모',
+  card: '카드',
+  wifi: '와이파이',
+  apikey: 'API Key',
+};
+
+// 한국어 조사: 받침 따라 이/가
+function particle(t: VaultType): string {
+  switch (t) {
+    case 'login':  return '가';   // 패스워드
+    case 'note':   return '가';   // 메모
+    case 'card':   return '가';   // 카드
+    case 'wifi':   return '가';   // 와이파이
+    case 'apikey': return '가';   // API Key (영어 끝, "이"가 더 어색)
+  }
+}
+
 export default function Vault() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -55,8 +88,7 @@ export default function Vault() {
   const clear = useSessionStore((s) => s.clear);
 
   const [searchParams] = useSearchParams();
-  // URL ?type=note 면 메모 탭, 그 외엔 로그인 탭 (기본)
-  const itemType: 'login' | 'note' = searchParams.get('type') === 'note' ? 'note' : 'login';
+  const itemType: VaultType = parseType(searchParams.get('type'));
 
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<CategorySlug | null>(null);
@@ -71,12 +103,10 @@ export default function Vault() {
   const [totpVisible, setTotpVisible] = useState(true);
   const [errorAlert, setErrorAlert] = useState<ErrorAlert | null>(null);
 
-  // DEK 없으면 (새로고침 등) 로그인으로 — 단, unlockMaterial이 있으면 잠금 상태이므로 LockScreen이 처리
   useEffect(() => {
     if (!dek && !unlockMaterial) navigate('/login', { replace: true });
   }, [dek, unlockMaterial, navigate]);
 
-  // 카탈로그 (아이콘 매핑용)
   const { data: catalog } = useQuery({
     queryKey: ['catalog'],
     queryFn: () => catalogApi.list(),
@@ -89,7 +119,6 @@ export default function Vault() {
     return m;
   }, [catalog]);
 
-  // Vault items: 서버에서 받은 즉시 클라이언트에서 복호화
   const { data: items, isPending } = useQuery({
     queryKey: ['vault-items'],
     queryFn: async (): Promise<DecryptedVaultItem[]> => {
@@ -114,8 +143,6 @@ export default function Vault() {
     enabled: !!dek,
   });
 
-  // items 리프레시 시 열려있는 모달의 state도 최신 version으로 동기화
-  // (복원/수정 후 cached 상태로 다시 저장 시도하면 VERSION_CONFLICT 발생하던 버그 방지)
   useEffect(() => {
     if (!items) return;
     if (editing) {
@@ -123,7 +150,7 @@ export default function Vault() {
       if (updated && updated.version !== editing.version) {
         setEditing(updated);
       } else if (!updated) {
-        setEditing(null);   // 항목이 삭제됨
+        setEditing(null);
       }
     }
     if (historyOf) {
@@ -136,25 +163,28 @@ export default function Vault() {
     }
   }, [items, editing, historyOf]);
 
-  // 사이드바/탭바에 보여줄 타입별 카운트 (전체 items 기준 — 필터와 무관)
-  const typeCounts = useMemo(() => {
-    if (!items) return { login: 0, note: 0 };
-    let login = 0;
-    let note = 0;
+  // 5 타입 카운트
+  const typeCounts: VaultCounts = useMemo(() => {
+    const c: VaultCounts = { login: 0, note: 0, card: 0, wifi: 0, apikey: 0 };
+    if (!items) return c;
     items.forEach((i) => {
-      if (i.itemType === 'note') note++;
-      else login++;
+      const t = i.itemType as VaultType;
+      if (VALID_TYPES.includes(t)) c[t]++;
+      else c.login++;        // 알 수 없는 타입은 login으로 분류 (legacy)
     });
-    return { login, note };
+    return c;
   }, [items]);
 
-  // 현재 활성 타입에 속한 항목들만 추려서 카테고리 brakedown 계산
+  // 현재 활성 타입에 속한 항목들만
   const itemsOfType = useMemo(
-    () => items?.filter((i) => (i.itemType === 'note' ? 'note' : 'login') === itemType) ?? [],
+    () => items?.filter((i) => {
+      const t = (i.itemType as VaultType);
+      const normalized = VALID_TYPES.includes(t) ? t : 'login';
+      return normalized === itemType;
+    }) ?? [],
     [items, itemType],
   );
 
-  // 헤더 통계: 활성 타입의 총 개수 + 카테고리별 카운트 (count desc 정렬)
   const stats = useMemo(() => {
     const total = itemsOfType.length;
     if (total === 0) return { total: 0, breakdown: [] as [CategorySlug, number][] };
@@ -172,7 +202,6 @@ export default function Vault() {
     [itemsOfType],
   );
 
-  // 탭 전환 시 검색어/카테고리 필터 초기화 (사용자가 깨끗한 화면을 기대)
   useEffect(() => {
     setSearch('');
     setActiveCategory(null);
@@ -188,10 +217,11 @@ export default function Vault() {
       list = list.filter((i) =>
         i.plaintext.name.toLowerCase().includes(q)
         || i.plaintext.username?.toLowerCase().includes(q)
+        || i.plaintext.alias?.toLowerCase().includes(q)
+        || i.plaintext.ssid?.toLowerCase().includes(q)
         || CATEGORY_LABELS[i.plaintext.category].includes(q),
       );
     }
-    // 정렬 — 원본 배열을 직접 변형하지 않도록 복사
     const sorted = [...list];
     sorted.sort((a, b) => {
       switch (sortMode) {
@@ -206,7 +236,7 @@ export default function Vault() {
         default: {
           const fa = a.plaintext.favorite ? 1 : 0;
           const fb = b.plaintext.favorite ? 1 : 0;
-          if (fa !== fb) return fb - fa;       // 즐겨찾기 먼저
+          if (fa !== fb) return fb - fa;
           return b.updatedAt.localeCompare(a.updatedAt);
         }
       }
@@ -214,10 +244,29 @@ export default function Vault() {
     return sorted;
   }, [itemsOfType, search, activeCategory, sortMode]);
 
+  // 타입별 복사 핸들러 매핑 — login(password), card(cardNumber), wifi(password), apikey(apiKeySecret)
+  function getPrimarySecret(item: DecryptedVaultItem): string | undefined {
+    const p = item.plaintext;
+    switch (item.itemType as VaultType) {
+      case 'card':   return p.cardNumber;
+      case 'apikey': return p.apiKeySecret;
+      default:       return p.password;
+    }
+  }
+
+  function getPrimaryLabel(itemType: VaultType): string {
+    switch (itemType) {
+      case 'card':   return '카드번호 복사';
+      case 'apikey': return 'Secret 복사';
+      default:       return '암호 복사';
+    }
+  }
+
   async function handleCopy(item: DecryptedVaultItem) {
-    if (!item.plaintext.password) return;
+    const secret = getPrimarySecret(item);
+    if (!secret) return;
     try {
-      await navigator.clipboard.writeText(item.plaintext.password);
+      await navigator.clipboard.writeText(secret);
       setCopiedId(item.id);
       setTimeout(() => {
         setCopiedId((cur) => (cur === item.id ? null : cur));
@@ -261,10 +310,6 @@ export default function Vault() {
     }
   }
 
-  /**
-   * 즐겨찾기 토글 — 항목 plaintext에 favorite 필드만 바꿔 재암호화 후 update.
-   * 모달 안 거치는 가벼운 in-place 액션. 버전 충돌 시 무시 (다음 동기화에서 갱신).
-   */
   const favoriteMutation = useMutation({
     mutationFn: async (item: DecryptedVaultItem) => {
       if (!dek) throw new Error('NO_DEK');
@@ -292,6 +337,7 @@ export default function Vault() {
     mutationFn: (id: string) => vaultApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vault-items'] });
+      queryClient.invalidateQueries({ queryKey: ['vault-counts'] });
     },
     onError: (error) => {
       const msg = error instanceof ApiError ? error.message : '삭제에 실패했습니다.';
@@ -302,7 +348,7 @@ export default function Vault() {
   async function handleLogout() {
     const rt = getRefreshToken();
     if (rt) {
-      try { await authApi.logout(rt); } catch { /* 서버 폐기 실패해도 로컬은 정리 */ }
+      try { await authApi.logout(rt); } catch { /* noop */ }
     }
     clear();
     setAccessToken(null);
@@ -312,8 +358,8 @@ export default function Vault() {
 
   if (!dek && !unlockMaterial) return null;
 
-  const typeLabel = itemType === 'note' ? '메모' : '패스워드';
-  // 패스워드/메모 둘 다 받침 없는 모음 → '가' 통일
+  const typeLabel = TYPE_LABELS[itemType];
+  const typePart = particle(itemType);
 
   return (
     <div className="page page--vault">
@@ -325,24 +371,17 @@ export default function Vault() {
       />
       <main className="vault">
         <header className="vault__head">
-          {/* 모바일 전용 상단 brand — 사이드바 숨겨진 환경에서 로고 노출 */}
           <div className="vault__mobileBrand">
             <Logo size={22} />
             <span className="vault__mobileWordmark">SecretBox</span>
           </div>
           <section className="vault__hero rise delay-2">
-            {stats.total === 0 && itemType === 'note' ? (
-              <h1 className="vault__heroTitle">
-                첫 <em>보안 메모</em>를<br />{' '}작성해보세요.
-              </h1>
-            ) : stats.total === 0 ? (
-              <h1 className="vault__heroTitle">
-                첫 <em>비밀</em>을<br />{' '}보관해보세요.
-              </h1>
+            {stats.total === 0 ? (
+              <EmptyHero itemType={itemType} />
             ) : (
               <>
                 <h1 className="vault__heroTitle">
-                  현재 <em>{stats.total}개</em>의 {typeLabel}가<br />{' '}
+                  현재 <em>{stats.total}개</em>의 {typeLabel}{typePart}<br />{' '}
                   안전하게 잠겨있어요.
                 </h1>
                 <ul className="vault__filters" role="tablist" aria-label="카테고리 필터">
@@ -396,7 +435,7 @@ export default function Vault() {
             className="vault__search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="이름·아이디·카테고리·메모 제목 검색"
+            placeholder={searchPlaceholder(itemType)}
           />
           <select
             className="vault__sort"
@@ -409,7 +448,7 @@ export default function Vault() {
               <option key={k} value={k}>{label}</option>
             ))}
           </select>
-          {hasAnyTotp && (
+          {itemType === 'login' && hasAnyTotp && (
             <button
               type="button"
               className={
@@ -439,28 +478,7 @@ export default function Vault() {
           )}
 
           {!isPending && itemsOfType.length === 0 && (
-            <div className="vault__empty">
-              <div className="vault__emptyIcon" aria-hidden>
-                <Logo size={44} />
-              </div>
-              <p className="vault__emptyTitle">
-                {itemType === 'note'
-                  ? '아직 작성된 메모가 없어요'
-                  : '아직 보관된 패스워드가 없어요'}
-              </p>
-              <p className="vault__emptyBody">
-                {itemType === 'note'
-                  ? '와이파이 비밀번호, 보안 질문 답…\n자유 텍스트로 안전하게 저장하세요.'
-                  : '카탈로그에서 서비스를 고르거나\n직접 입력해 등록할 수 있어요.'}
-              </p>
-              <button
-                type="button"
-                className="vault__emptyCta"
-                onClick={() => setShowAdd(true)}
-              >
-                {itemType === 'note' ? '+ 첫 메모 작성하기' : '+ 첫 패스워드 등록하기'}
-              </button>
-            </div>
+            <EmptyState itemType={itemType} onAdd={() => setShowAdd(true)} />
           )}
 
           {!isPending && itemsOfType.length > 0 && filtered.length === 0 && (
@@ -472,141 +490,26 @@ export default function Vault() {
           )}
 
           <ul className="vault__items">
-            {filtered.map((item) => {
-              const cat = item.plaintext.catalogSlug
-                ? catalogMap.get(item.plaintext.catalogSlug)
-                : undefined;
-              const isCopied = copiedId === item.id;
-              const isNote = item.itemType === 'note';
-              return (
-                <li
-                  key={item.id}
-                  className={'vault__card' + (isNote ? ' vault__card--note' : '')}
-                >
-                  <button
-                    type="button"
-                    className="vault__cardBody"
-                    onClick={() => setEditing(item)}
-                  >
-                    {isNote ? (
-                      <div className="vault__noteAvatar" aria-hidden>
-                        <NoteIcon />
-                      </div>
-                    ) : (
-                      <Avatar
-                        name={item.plaintext.name}
-                        iconUrl={cat?.iconUrl}
-                        brandColor={cat?.brandColor}
-                        size={36}
-                      />
-                    )}
-                    <div className="vault__cardInfo">
-                      <span className="vault__cardName">{item.plaintext.name}</span>
-                      {isNote ? (
-                        <span className="vault__cardUser vault__cardUser--note">
-                          •••••• 보안 메모 — 클릭해 열기
-                        </span>
-                      ) : (
-                        <span className="vault__cardUser">
-                          {item.plaintext.alias && (
-                            <span className="vault__cardSubname">{item.plaintext.alias}</span>
-                          )}
-                          {item.plaintext.alias && item.plaintext.username && ' · '}
-                          {item.plaintext.username}
-                        </span>
-                      )}
-                    </div>
-                    <span className="vault__cardCat">
-                      {isNote ? '메모' : CATEGORY_LABELS[item.plaintext.category]}
-                    </span>
-                  </button>
-                  {!isNote && item.plaintext.totpSecret && (
-                    <TotpDisplay
-                      secret={item.plaintext.totpSecret}
-                      visible={totpVisible}
-                      isCopied={copiedTotpId === item.id}
-                      onCopy={(code) => handleCopyTotp(item.id, code)}
-                    />
-                  )}
-                  <div className="vault__cardActions">
-                    <button
-                      type="button"
-                      className={
-                        'vault__cardAction vault__cardAction--star'
-                        + (item.plaintext.favorite ? ' is-on' : '')
-                      }
-                      onClick={() => favoriteMutation.mutate(item)}
-                      disabled={favoriteMutation.isPending}
-                      title={item.plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
-                      aria-label={item.plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
-                      aria-pressed={!!item.plaintext.favorite}
-                    >
-                      <StarIcon filled={!!item.plaintext.favorite} />
-                    </button>
-                    {!isNote && item.plaintext.url && (
-                      <a
-                        className="vault__cardAction"
-                        href={item.plaintext.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="바로가기"
-                        aria-label="바로가기"
-                      >
-                        <ExternalLinkIcon />
-                      </a>
-                    )}
-                    {!isNote && item.plaintext.username && (
-                      <button
-                        type="button"
-                        className={
-                          'vault__cardAction'
-                          + (copiedUserId === item.id ? ' vault__cardAction--copiedUser' : '')
-                        }
-                        onClick={() => handleCopyUsername(item)}
-                        title={copiedUserId === item.id ? '복사됨' : '아이디 복사'}
-                        aria-label="아이디 복사"
-                      >
-                        {copiedUserId === item.id ? <CheckIcon /> : <UserIcon />}
-                      </button>
-                    )}
-                    {!isNote && (
-                      <button
-                        type="button"
-                        className={
-                          'vault__cardAction'
-                          + (isCopied ? ' vault__cardAction--copied' : '')
-                        }
-                        onClick={() => handleCopy(item)}
-                        title={isCopied ? '복사됨' : '암호 복사'}
-                        aria-label="암호 복사"
-                      >
-                        {isCopied ? <CheckIcon /> : <KeyIcon />}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="vault__cardAction"
-                      onClick={() => setHistoryOf(item)}
-                      title="변경 이력"
-                      aria-label="변경 이력"
-                    >
-                      <ClockIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className="vault__cardAction vault__cardAction--danger"
-                      onClick={() =>
-                        setConfirmDelete({ id: item.id, label: item.plaintext.name })
-                      }
-                      title="삭제"
-                      aria-label="삭제"
-                    >
-                      <TrashIcon />
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+            {filtered.map((item) => (
+              <VaultCard
+                key={item.id}
+                item={item}
+                catalog={item.plaintext.catalogSlug ? catalogMap.get(item.plaintext.catalogSlug) : undefined}
+                copiedSecret={copiedId === item.id}
+                copiedUser={copiedUserId === item.id}
+                copiedTotp={copiedTotpId === item.id}
+                totpVisible={totpVisible}
+                favoritePending={favoriteMutation.isPending}
+                onOpen={() => setEditing(item)}
+                onFavorite={() => favoriteMutation.mutate(item)}
+                onCopy={() => handleCopy(item)}
+                onCopyUser={() => handleCopyUsername(item)}
+                onCopyTotp={(code) => handleCopyTotp(item.id, code)}
+                onHistory={() => setHistoryOf(item)}
+                onDelete={() => setConfirmDelete({ id: item.id, label: item.plaintext.name })}
+                getPrimaryLabel={getPrimaryLabel}
+              />
+            ))}
           </ul>
         </section>
 
@@ -616,8 +519,6 @@ export default function Vault() {
           </p>
           <p className="vault__credit">
             Crafted by{' '}
-            {/* <span className="vault__creditName">dev-jsshin</span>
-            {' '}·{' '} */}
             <span className="vault__creditName">신준섭</span>
           </p>
         </footer>
@@ -663,9 +564,336 @@ export default function Vault() {
         message={errorAlert?.message}
       />
 
-      <MobileTabBar current={itemType} />
+      <MobileTabBar current={itemType} counts={typeCounts} />
     </div>
   );
+}
+
+/* ========================================================================
+   VaultCard — 항목 한 줄. 타입별 표시 분기.
+   ======================================================================== */
+interface VaultCardProps {
+  item: DecryptedVaultItem;
+  catalog?: ServiceCatalogItem;
+  copiedSecret: boolean;
+  copiedUser: boolean;
+  copiedTotp: boolean;
+  totpVisible: boolean;
+  favoritePending: boolean;
+  onOpen: () => void;
+  onFavorite: () => void;
+  onCopy: () => void;
+  onCopyUser: () => void;
+  onCopyTotp: (code: string) => void;
+  onHistory: () => void;
+  onDelete: () => void;
+  getPrimaryLabel: (t: VaultType) => string;
+}
+
+function VaultCard(p: VaultCardProps) {
+  const itemType = p.item.itemType as VaultType;
+  const plaintext = p.item.plaintext;
+
+  return (
+    <li className={`vault__card vault__card--${itemType}`}>
+      <button
+        type="button"
+        className="vault__cardBody"
+        onClick={p.onOpen}
+      >
+        <CardAvatar item={p.item} catalog={p.catalog} />
+        <div className="vault__cardInfo">
+          <span className="vault__cardName">{plaintext.name}</span>
+          <CardSubLine item={p.item} />
+        </div>
+        <span className="vault__cardCat">
+          {cardTypeLabel(p.item)}
+        </span>
+      </button>
+
+      {itemType === 'login' && plaintext.totpSecret && (
+        <TotpDisplay
+          secret={plaintext.totpSecret}
+          visible={p.totpVisible}
+          isCopied={p.copiedTotp}
+          onCopy={p.onCopyTotp}
+        />
+      )}
+
+      <div className="vault__cardActions">
+        <button
+          type="button"
+          className={
+            'vault__cardAction vault__cardAction--star'
+            + (plaintext.favorite ? ' is-on' : '')
+          }
+          onClick={p.onFavorite}
+          disabled={p.favoritePending}
+          title={plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
+          aria-label={plaintext.favorite ? '즐겨찾기 해제' : '즐겨찾기'}
+          aria-pressed={!!plaintext.favorite}
+        >
+          <StarIcon filled={!!plaintext.favorite} />
+        </button>
+
+        {itemType === 'login' && plaintext.url && (
+          <a
+            className="vault__cardAction"
+            href={plaintext.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="바로가기"
+            aria-label="바로가기"
+          >
+            <ExternalLinkIcon />
+          </a>
+        )}
+
+        {itemType === 'login' && plaintext.username && (
+          <button
+            type="button"
+            className={
+              'vault__cardAction'
+              + (p.copiedUser ? ' vault__cardAction--copiedUser' : '')
+            }
+            onClick={p.onCopyUser}
+            title={p.copiedUser ? '복사됨' : '아이디 복사'}
+            aria-label="아이디 복사"
+          >
+            {p.copiedUser ? <CheckIcon /> : <UserIcon />}
+          </button>
+        )}
+
+        {(itemType === 'login' || itemType === 'card' || itemType === 'apikey'
+          || (itemType === 'wifi' && plaintext.password)) && (
+          <button
+            type="button"
+            className={
+              'vault__cardAction'
+              + (p.copiedSecret ? ' vault__cardAction--copied' : '')
+            }
+            onClick={p.onCopy}
+            title={p.copiedSecret ? '복사됨' : p.getPrimaryLabel(itemType)}
+            aria-label={p.getPrimaryLabel(itemType)}
+          >
+            {p.copiedSecret ? <CheckIcon /> : <KeyIcon />}
+          </button>
+        )}
+
+        <button
+          type="button"
+          className="vault__cardAction"
+          onClick={p.onHistory}
+          title="변경 이력"
+          aria-label="변경 이력"
+        >
+          <ClockIcon />
+        </button>
+        <button
+          type="button"
+          className="vault__cardAction vault__cardAction--danger"
+          onClick={p.onDelete}
+          title="삭제"
+          aria-label="삭제"
+        >
+          <TrashIcon />
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function CardAvatar({ item, catalog }: { item: DecryptedVaultItem; catalog?: ServiceCatalogItem }) {
+  const itemType = item.itemType as VaultType;
+  if (itemType === 'note') {
+    return <div className="vault__typeAvatar vault__typeAvatar--note" aria-hidden><ItemTypeNoteIcon size={18} /></div>;
+  }
+  if (itemType === 'card') {
+    return <div className="vault__typeAvatar vault__typeAvatar--card" aria-hidden><ItemTypeCardIcon size={18} /></div>;
+  }
+  if (itemType === 'wifi') {
+    return <div className="vault__typeAvatar vault__typeAvatar--wifi" aria-hidden><ItemTypeWifiIcon size={18} /></div>;
+  }
+  if (itemType === 'apikey') {
+    const env = item.plaintext.apiEnvironment;
+    const tone = env === 'production' ? 'danger' : env === 'staging' ? 'warning' : 'neutral';
+    return (
+      <div className={`vault__typeAvatar vault__typeAvatar--apikey vault__typeAvatar--${tone}`} aria-hidden>
+        <ItemTypeApiIcon size={18} />
+      </div>
+    );
+  }
+  // login (기본)
+  return (
+    <Avatar
+      name={item.plaintext.name}
+      iconUrl={catalog?.iconUrl}
+      brandColor={catalog?.brandColor}
+      size={36}
+    />
+  );
+}
+
+function CardSubLine({ item }: { item: DecryptedVaultItem }) {
+  const itemType = item.itemType as VaultType;
+  const p = item.plaintext;
+
+  if (itemType === 'note') {
+    return (
+      <span className="vault__cardUser vault__cardUser--note">
+        •••••• 보안 메모 — 클릭해 열기
+      </span>
+    );
+  }
+  if (itemType === 'card') {
+    const last4 = p.cardNumber ? p.cardNumber.replace(/\s/g, '').slice(-4) : '••••';
+    return (
+      <span className="vault__cardUser vault__cardUser--mono">
+        •••• {last4}
+        {p.cardholderName && <span className="vault__cardSep"> · </span>}
+        {p.cardholderName}
+        {p.cardExpiry && <span className="vault__cardSep"> · </span>}
+        {p.cardExpiry}
+      </span>
+    );
+  }
+  if (itemType === 'wifi') {
+    return (
+      <span className="vault__cardUser vault__cardUser--mono">
+        {p.ssid || p.name}
+        {p.wifiSecurity && p.wifiSecurity !== 'open' && (
+          <>
+            <span className="vault__cardSep"> · </span>
+            {p.wifiSecurity}
+          </>
+        )}
+      </span>
+    );
+  }
+  if (itemType === 'apikey') {
+    const env = p.apiEnvironment ?? 'other';
+    return (
+      <span className="vault__cardUser vault__cardUser--mono">
+        <span className={`vault__envChip vault__envChip--${env === 'production' ? 'danger' : env === 'staging' ? 'warning' : 'neutral'}`}>
+          {env === 'production' ? 'PROD' : env === 'staging' ? 'STG' : env === 'development' ? 'DEV' : 'OTH'}
+        </span>
+        {p.apiKeyId && (
+          <>
+            <span className="vault__cardSep">{' '}</span>
+            <span className="vault__apiKeyId">
+              {p.apiKeyId.length > 14 ? p.apiKeyId.slice(0, 6) + '…' + p.apiKeyId.slice(-4) : p.apiKeyId}
+            </span>
+          </>
+        )}
+        {!p.apiKeyId && (
+          <>
+            <span className="vault__cardSep">{' '}</span>
+            <span className="vault__cardSubname">•••••• Secret 숨김</span>
+          </>
+        )}
+      </span>
+    );
+  }
+  // login
+  return (
+    <span className="vault__cardUser">
+      {p.alias && (
+        <span className="vault__cardSubname">{p.alias}</span>
+      )}
+      {p.alias && p.username && ' · '}
+      {p.username}
+    </span>
+  );
+}
+
+function cardTypeLabel(item: DecryptedVaultItem): string {
+  const t = item.itemType as VaultType;
+  switch (t) {
+    case 'note': return '메모';
+    case 'card': return '카드';
+    case 'wifi': return 'WIFI';
+    case 'apikey': return 'API';
+    default: return CATEGORY_LABELS[item.plaintext.category] ?? '항목';
+  }
+}
+
+/* ========================================================================
+   Empty hero (전체 비었을 때)
+   ======================================================================== */
+function EmptyHero({ itemType }: { itemType: VaultType }) {
+  const titles: Record<VaultType, JSX.Element> = {
+    login:  <>첫 <em>비밀</em>을<br />{' '}보관해보세요.</>,
+    note:   <>첫 <em>보안 메모</em>를<br />{' '}작성해보세요.</>,
+    card:   <>첫 <em>카드</em>를<br />{' '}안전하게 잠가보세요.</>,
+    wifi:   <>첫 <em>와이파이</em>를<br />{' '}한곳에 모아보세요.</>,
+    apikey: <>첫 <em>API Key</em>를<br />{' '}안전하게 보관해보세요.</>,
+  };
+  return <h1 className="vault__heroTitle">{titles[itemType]}</h1>;
+}
+
+/* ========================================================================
+   EmptyState (vault__content 안 — CTA 카드)
+   ======================================================================== */
+function EmptyState({ itemType, onAdd }: { itemType: VaultType; onAdd: () => void }) {
+  const meta: Record<VaultType, { title: string; body: string; cta: string; Icon: React.ComponentType<{ size?: number }> }> = {
+    login: {
+      title: '아직 보관된 패스워드가 없어요',
+      body:  '카탈로그에서 서비스를 고르거나 직접 입력해 등록할 수 있어요.',
+      cta:   '+ 첫 패스워드 등록하기',
+      Icon:  ItemTypeKeyIcon,
+    },
+    note: {
+      title: '아직 작성된 메모가 없어요',
+      body:  '와이파이 비번, 보안 질문 답… 자유 텍스트로 안전하게 저장하세요.',
+      cta:   '+ 첫 메모 작성하기',
+      Icon:  ItemTypeNoteIcon,
+    },
+    card: {
+      title: '신용카드 정보를 안전하게 잠가두세요',
+      body:  '카드번호·CVV·PIN을 client-side AES-GCM으로 암호화해 보관합니다.',
+      cta:   '+ 첫 카드 등록하기',
+      Icon:  ItemTypeCardIcon,
+    },
+    wifi: {
+      title: '와이파이 비밀번호 한곳에 모으기',
+      body:  '저장된 SSID와 비밀번호로 즉시 QR 코드 생성 — 가족·친구와 공유.',
+      cta:   '+ 첫 와이파이 등록하기',
+      Icon:  ItemTypeWifiIcon,
+    },
+    apikey: {
+      title: 'API 키와 시크릿 보호',
+      body:  '환경별(production/staging/development) 색상 코딩 + 만료일 알림.',
+      cta:   '+ 첫 API Key 등록하기',
+      Icon:  ItemTypeApiIcon,
+    },
+  };
+  const m = meta[itemType];
+  return (
+    <div className="vault__empty">
+      <div className="vault__emptyIcon" aria-hidden>
+        <m.Icon size={36} />
+      </div>
+      <p className="vault__emptyTitle">{m.title}</p>
+      <p className="vault__emptyBody">{m.body}</p>
+      <button
+        type="button"
+        className="vault__emptyCta"
+        onClick={onAdd}
+      >
+        {m.cta}
+      </button>
+    </div>
+  );
+}
+
+function searchPlaceholder(t: VaultType): string {
+  switch (t) {
+    case 'note':   return '메모 제목·카테고리 검색';
+    case 'card':   return '카드 이름·명의자 검색';
+    case 'wifi':   return 'SSID·이름 검색';
+    case 'apikey': return 'API 이름·환경 검색';
+    default:       return '이름·아이디·카테고리 검색';
+  }
 }
 
 // ---------- inline icons ----------
@@ -773,17 +1001,3 @@ function TrashIcon() {
     </svg>
   );
 }
-
-function NoteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
-         stroke="currentColor" strokeWidth="1.6"
-         strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 3 14 8 19 8" />
-      <line x1="9" y1="13" x2="15" y2="13" />
-      <line x1="9" y1="17" x2="13" y2="17" />
-    </svg>
-  );
-}
-
