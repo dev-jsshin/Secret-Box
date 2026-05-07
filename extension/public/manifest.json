@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "SecretBox",
+  "short_name": "SecretBox",
+  "version": "0.0.1",
+  "description": "Zero-knowledge vault — autofill for browsers.",
+  "action": {
+    "default_title": "SecretBox",
+    "default_popup": "src/popup/index.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "permissions": [
+    "storage",
+    "scripting",
+    "offscreen",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["src/offscreen/index.html", "assets/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "minimum_chrome_version": "116"
+}
