@@ -8,8 +8,12 @@ export interface SbSettings {
   backendUrl: string; // 예: https://secretbox.lan/api/v1
 }
 
+// DEV: 개발 중인 LAN 백엔드 — 확장 설치/업데이트 시 자동 시드 (background/index.ts).
+// 배포 패키징 (Day 7) 전에 빈 문자열로 되돌릴 것.
+export const DEV_DEFAULT_BACKEND_URL = 'http://10.23.12.69:6334/api/v1';
+
 const DEFAULT_SETTINGS: SbSettings = {
-  backendUrl: '',
+  backendUrl: DEV_DEFAULT_BACKEND_URL,
 };
 
 export async function getSettings(): Promise<SbSettings> {

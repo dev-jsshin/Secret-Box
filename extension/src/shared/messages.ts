@@ -1,14 +1,48 @@
-// 확장의 4개 파트(popup, background, content, offscreen)는 다른 프로세스에서 돌고
-// chrome.runtime.sendMessage로만 소통한다. 모든 메시지는 한 곳에 typed로 모아서
-// 각 파트가 같은 타입을 import하게 한다 — payload 모양이 어긋나 디버깅 지옥에 빠지는
-// 가장 흔한 사고를 방지.
+// 모든 popup ↔ background ↔ offscreen 메시지의 단일 소스. 각 파트가 import해서 동일한
+// 페이로드 타입을 공유하도록 강제 — 메시지 채널은 typed가 아니라 런타임 in/out이라
+// 한 곳에서 안 잡으면 디버깅이 끔찍해짐.
+//
+// 응답 형태는 모두 {ok: true, data} 또는 {ok: false, error}로 통일. 이렇게 묶으면
+// throw 대신 응답 객체로 에러를 옮길 수 있어 sendResponse 콜백 흐름과 잘 맞음.
 
 export type SbMessage =
+  // 공통
   | { kind: 'PING'; from: 'popup' | 'content' | 'offscreen' }
-  | { kind: 'PONG'; from: 'background' };
+  // popup ↔ background
+  | { kind: 'GET_STATE' }
+  | { kind: 'UNLOCK'; email: string; password: string }
+  | { kind: 'UNLOCK_2FA'; code: string }
+  | { kind: 'LOCK' }
+  | { kind: 'LIST_ITEMS' }
+  | { kind: 'GET_ITEM_PLAINTEXT'; id: string }
+  // popup → background → 활성 탭 content
+  | { kind: 'FILL_ACTIVE_TAB'; id: string }
+  // content → background
+  | { kind: 'CONTENT_LIST_MATCHES'; host: string }
+  // background → content (chrome.tabs.sendMessage)
+  | { kind: 'CONTENT_FILL'; username?: string; password?: string }
+  // background ↔ offscreen (Argon2 위임)
+  | {
+      kind: 'OFFSCREEN_ARGON2';
+      passwordB64: string;       // UTF-8 → bytes → base64 — 메시지 직렬화 안전성
+      saltB64: string;
+      iterations: number;
+      memoryKb: number;
+      parallelism: number;
+    };
 
-export type SbResponse = { ok: true; data?: unknown } | { ok: false; error: string };
+export type SbState =
+  | { phase: 'locked'; lastEmail: string | null }
+  | { phase: 'awaiting-2fa'; email: string }
+  | { phase: 'unlocked'; email: string; userId: string };
 
-export function sendMessage(msg: SbMessage): Promise<SbResponse> {
+export type SbResponse<T = unknown> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; code?: string };
+
+export function sendMessage<T = unknown>(msg: SbMessage): Promise<SbResponse<T>> {
   return chrome.runtime.sendMessage(msg);
 }
+
+// 단순한 PING 답변용 — 문자열 응답 호환.
+export type PongData = { kind: 'PONG'; from: 'background' };

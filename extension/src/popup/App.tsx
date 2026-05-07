@@ -1,140 +1,227 @@
-import { useEffect, useReducer } from 'react';
+import { useCallback, useEffect, useReducer } from 'react';
 import { LockScreen } from './screens/LockScreen';
+import { TwoFactorScreen } from './screens/TwoFactorScreen';
 import { ItemsScreen, type PopupItemRow } from './screens/ItemsScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { getSettings, isConfigured, setSettings, type SbSettings } from '../shared/settings';
+import { sendMessage, type SbState } from '../shared/messages';
+import type { ItemSummary } from '../shared/vaultTypes';
 
-// Day 2 — UI 골격 + 상태 머신만 완성. 실제 KEK 파생/저장은 Day 3에서 연결.
-// "unlock"은 지금은 로컬 상태만 바꾸는 mock. 항목도 데모 데이터.
+// Day 3 — 진짜 백엔드 + KEK + 복호화 흐름. background에서 단일 진실로 GET_STATE / LIST_ITEMS.
 
-type Screen = 'loading' | 'needs-config' | 'locked' | 'unlocked' | 'settings';
+type Screen =
+  | { kind: 'loading' }
+  | { kind: 'needs-config' }
+  | { kind: 'locked'; lastEmail: string }
+  | { kind: 'awaiting-2fa'; email: string }
+  | { kind: 'unlocked'; email: string }
+  | { kind: 'settings'; back: 'locked' | 'unlocked' | 'needs-config' };
 
-interface State {
+interface AppState {
   screen: Screen;
   settings: SbSettings | null;
-  prevScreen: Screen | null; // settings에서 닫을 때 어디로 돌아갈지
   currentHost: string;
+  items: ItemSummary[];
 }
 
 type Action =
-  | { type: 'INIT'; settings: SbSettings; host: string }
+  | { type: 'INIT'; settings: SbSettings; host: string; bgState: SbState }
+  | { type: 'SET_BG_STATE'; bgState: SbState }
   | { type: 'OPEN_SETTINGS' }
   | { type: 'CLOSE_SETTINGS' }
-  | { type: 'SETTINGS_SAVED'; settings: SbSettings }
-  | { type: 'UNLOCKED' }
-  | { type: 'LOCK' };
+  | { type: 'SETTINGS_SAVED'; settings: SbSettings; bgState: SbState }
+  | { type: 'SET_ITEMS'; items: ItemSummary[] };
 
-function reducer(state: State, action: Action): State {
+function bgStateToScreen(s: SbState): Screen {
+  if (s.phase === 'unlocked') return { kind: 'unlocked', email: s.email };
+  if (s.phase === 'awaiting-2fa') return { kind: 'awaiting-2fa', email: s.email };
+  return { kind: 'locked', lastEmail: s.lastEmail ?? '' };
+}
+
+function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'INIT': {
-      const next: Screen = isConfigured(action.settings) ? 'locked' : 'needs-config';
-      return { ...state, settings: action.settings, screen: next, currentHost: action.host };
+      const screen: Screen = isConfigured(action.settings)
+        ? bgStateToScreen(action.bgState)
+        : { kind: 'needs-config' };
+      return { ...state, settings: action.settings, currentHost: action.host, screen };
     }
-    case 'OPEN_SETTINGS':
-      return { ...state, prevScreen: state.screen, screen: 'settings' };
-    case 'CLOSE_SETTINGS':
-      return { ...state, screen: state.prevScreen ?? 'locked', prevScreen: null };
+    case 'SET_BG_STATE':
+      return { ...state, screen: bgStateToScreen(action.bgState) };
+    case 'OPEN_SETTINGS': {
+      const back = state.screen.kind === 'unlocked'
+        ? 'unlocked'
+        : state.screen.kind === 'needs-config' ? 'needs-config' : 'locked';
+      return { ...state, screen: { kind: 'settings', back } };
+    }
+    case 'CLOSE_SETTINGS': {
+      const back = state.screen.kind === 'settings' ? state.screen.back : 'locked';
+      if (back === 'unlocked') return { ...state, screen: { kind: 'unlocked', email: '' } };
+      if (back === 'needs-config') return { ...state, screen: { kind: 'needs-config' } };
+      return { ...state, screen: { kind: 'locked', lastEmail: '' } };
+    }
     case 'SETTINGS_SAVED': {
-      // needs-config 상태에서 저장 → locked로 진입
-      const next: Screen = state.screen === 'settings' && state.prevScreen
-        ? state.prevScreen
-        : isConfigured(action.settings) ? 'locked' : 'needs-config';
-      return { ...state, settings: action.settings, screen: next, prevScreen: null };
+      const screen = isConfigured(action.settings)
+        ? bgStateToScreen(action.bgState)
+        : { kind: 'needs-config' as const };
+      return { ...state, settings: action.settings, screen };
     }
-    case 'UNLOCKED':
-      return { ...state, screen: 'unlocked' };
-    case 'LOCK':
-      return { ...state, screen: 'locked' };
+    case 'SET_ITEMS':
+      return { ...state, items: action.items };
   }
 }
 
-const INITIAL: State = {
-  screen: 'loading',
+const INITIAL: AppState = {
+  screen: { kind: 'loading' },
   settings: null,
-  prevScreen: null,
   currentHost: '',
+  items: [],
 };
-
-const MOCK_ITEMS: PopupItemRow[] = [
-  { id: '1', name: 'GitHub', username: 'sinjunseob', url: 'https://github.com', catalogSlug: 'github', matchedHost: true },
-  { id: '2', name: 'Google', username: 'tlswnstjq001@gmail.com', url: 'https://accounts.google.com', catalogSlug: 'google', matchedHost: false },
-  { id: '3', name: 'Notion', username: 'me@example.com', url: 'https://www.notion.so', catalogSlug: 'notion', matchedHost: false },
-];
 
 export function App() {
   const [state, dispatch] = useReducer(reducer, INITIAL);
 
+  const refreshState = useCallback(async () => {
+    const r = await sendMessage<SbState>({ kind: 'GET_STATE' });
+    if (r.ok) dispatch({ type: 'SET_BG_STATE', bgState: r.data });
+  }, []);
+
   useEffect(() => {
     (async () => {
-      const [s, host] = await Promise.all([getSettings(), getActiveTabHost()]);
-      dispatch({ type: 'INIT', settings: s, host });
+      const [s, host, bg] = await Promise.all([
+        getSettings(),
+        getActiveTabHost(),
+        sendMessage<SbState>({ kind: 'GET_STATE' }),
+      ]);
+      dispatch({
+        type: 'INIT',
+        settings: s,
+        host,
+        bgState: bg.ok ? bg.data : { phase: 'locked', lastEmail: null },
+      });
     })();
   }, []);
 
-  if (state.screen === 'loading' || !state.settings) {
+  // 잠금 해제된 직후 항목 fetch
+  useEffect(() => {
+    if (state.screen.kind !== 'unlocked') return;
+    let cancelled = false;
+    (async () => {
+      const r = await sendMessage<ItemSummary[]>({ kind: 'LIST_ITEMS' });
+      if (!cancelled && r.ok) dispatch({ type: 'SET_ITEMS', items: r.data });
+    })();
+    return () => { cancelled = true; };
+  }, [state.screen.kind]);
+
+  if (state.screen.kind === 'loading' || !state.settings) {
     return <div className="screen" />;
   }
 
-  // 첫 실행 — 백엔드 URL 입력 강제
-  if (state.screen === 'needs-config') {
+  if (state.screen.kind === 'needs-config') {
     return (
       <SettingsScreen
         settings={state.settings}
         isLocked={true}
         onSave={async (next) => {
           const saved = await setSettings(next);
-          dispatch({ type: 'SETTINGS_SAVED', settings: saved });
+          const bg = await sendMessage<SbState>({ kind: 'GET_STATE' });
+          dispatch({
+            type: 'SETTINGS_SAVED',
+            settings: saved,
+            bgState: bg.ok ? bg.data : { phase: 'locked', lastEmail: null },
+          });
         }}
-        onBack={() => { /* needs-config에선 닫기 없음 */ }}
-        onLockNow={() => { /* 잠금 상태 자체에서는 의미 없음 */ }}
+        onBack={() => { /* 첫 실행 — 닫기 없음 */ }}
+        onLockNow={() => { /* 의미 없음 */ }}
       />
     );
   }
 
-  if (state.screen === 'settings') {
+  if (state.screen.kind === 'settings') {
     return (
       <SettingsScreen
         settings={state.settings}
-        isLocked={state.prevScreen === 'locked'}
+        isLocked={state.screen.back === 'locked' || state.screen.back === 'needs-config'}
         onSave={async (next) => {
           const saved = await setSettings(next);
-          dispatch({ type: 'SETTINGS_SAVED', settings: saved });
+          const bg = await sendMessage<SbState>({ kind: 'GET_STATE' });
+          dispatch({
+            type: 'SETTINGS_SAVED',
+            settings: saved,
+            bgState: bg.ok ? bg.data : { phase: 'locked', lastEmail: null },
+          });
         }}
         onBack={() => dispatch({ type: 'CLOSE_SETTINGS' })}
-        onLockNow={() => dispatch({ type: 'LOCK' })}
+        onLockNow={async () => {
+          await sendMessage({ kind: 'LOCK' });
+          await refreshState();
+        }}
       />
     );
   }
 
-  if (state.screen === 'locked') {
+  if (state.screen.kind === 'locked') {
     return (
       <LockScreen
         hostHint={shortHost(state.settings.backendUrl)}
-        onUnlock={async (_password) => {
-          // Day 3에서 Argon2 + chrome.storage.session으로 교체.
-          // 지금은 잠시 await로 UX 확인.
-          await new Promise((r) => setTimeout(r, 250));
-          dispatch({ type: 'UNLOCKED' });
+        initialEmail={state.screen.lastEmail}
+        onUnlock={async (email, password) => {
+          const r = await sendMessage<{ phase: 'unlocked' | 'awaiting-2fa' }>({
+            kind: 'UNLOCK',
+            email,
+            password,
+          });
+          if (!r.ok) throw new Error(r.error);
+          await refreshState();
         }}
         onOpenSettings={() => dispatch({ type: 'OPEN_SETTINGS' })}
       />
     );
   }
 
+  if (state.screen.kind === 'awaiting-2fa') {
+    return (
+      <TwoFactorScreen
+        email={state.screen.email}
+        onSubmit={async (code) => {
+          const r = await sendMessage({ kind: 'UNLOCK_2FA', code });
+          if (!r.ok) throw new Error(r.error);
+          await refreshState();
+        }}
+        onCancel={async () => {
+          await sendMessage({ kind: 'LOCK' });
+          await refreshState();
+        }}
+      />
+    );
+  }
+
   // unlocked
-  const matchedItems = MOCK_ITEMS.map((it) => ({
-    ...it,
-    matchedHost: !!state.currentHost && (it.url ?? '').includes(state.currentHost),
+  const rows: PopupItemRow[] = state.items.map((i) => ({
+    id: i.id,
+    name: i.name,
+    username: i.username,
+    url: i.url,
+    catalogSlug: i.catalogSlug,
+    matchedHost: !!state.currentHost && hostMatches(state.currentHost, i.url),
   }));
+
   return (
     <ItemsScreen
-      items={matchedItems}
+      items={rows}
       currentHost={state.currentHost}
-      onPickItem={(id) => {
-        // Day 4에서 content script로 자동 채우기. 지금은 콘솔 로그만.
-        console.log('[SecretBox] pick item', id);
+      onPickItem={async (id) => {
+        const r = await sendMessage({ kind: 'FILL_ACTIVE_TAB', id });
+        if (!r.ok) {
+          console.warn('[SecretBox] fill 실패:', r.error);
+          return;
+        }
+        window.close();   // 채우기 성공 후 popup 자동 닫기 — 채워진 화면이 바로 보이도록
       }}
-      onLock={() => dispatch({ type: 'LOCK' })}
+      onLock={async () => {
+        await sendMessage({ kind: 'LOCK' });
+        await refreshState();
+      }}
       onOpenSettings={() => dispatch({ type: 'OPEN_SETTINGS' })}
     />
   );
@@ -144,8 +231,7 @@ async function getActiveTabHost(): Promise<string> {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.url) return '';
-    const u = new URL(tab.url);
-    return u.host;
+    return new URL(tab.url).host;
   } catch {
     return '';
   }
@@ -153,10 +239,18 @@ async function getActiveTabHost(): Promise<string> {
 
 function shortHost(backendUrl: string): string {
   if (!backendUrl) return '';
+  try { return new URL(backendUrl).host; } catch { return backendUrl; }
+}
+
+function hostMatches(currentHost: string, itemUrl: string | undefined): boolean {
+  if (!itemUrl) return false;
   try {
-    const u = new URL(backendUrl);
-    return u.host;
+    const itemHost = new URL(itemUrl).host;
+    // root 매칭: 둘 중 하나가 다른 쪽의 suffix면 매칭 (www.github.com vs github.com)
+    return itemHost === currentHost ||
+      currentHost.endsWith('.' + itemHost) ||
+      itemHost.endsWith('.' + currentHost);
   } catch {
-    return backendUrl;
+    return false;
   }
 }

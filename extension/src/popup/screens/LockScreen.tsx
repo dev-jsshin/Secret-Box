@@ -1,23 +1,25 @@
 import { FormEvent, useState } from 'react';
 
 interface Props {
-  hostHint: string; // backend URL을 짧게 보여줌
-  onUnlock: (password: string) => Promise<void> | void;
+  hostHint: string;
+  initialEmail: string;
+  onUnlock: (email: string, password: string) => Promise<void>;
   onOpenSettings: () => void;
 }
 
-export function LockScreen({ hostHint, onUnlock, onOpenSettings }: Props) {
+export function LockScreen({ hostHint, initialEmail, onUnlock, onOpenSettings }: Props) {
+  const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!password || busy) return;
+    if (!email || !password || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await onUnlock(password);
+      await onUnlock(email, password);
     } catch (err) {
       setError(err instanceof Error ? err.message : '잠금 해제 실패');
     } finally {
@@ -31,11 +33,26 @@ export function LockScreen({ hostHint, onUnlock, onOpenSettings }: Props) {
         <div className="lock__logo">SB</div>
         <h1 className="lock__title">SecretBox</h1>
         <p className="lock__lede">
-          마스터 비밀번호로 잠금을 해제하면 현재 페이지에 자동완성을 띄워줍니다.
+          마스터 계정으로 잠금을 해제하면 현재 페이지에 자동완성을 띄워줍니다.
         </p>
       </div>
 
       <form className="lock__form" onSubmit={submit}>
+        <div className="field">
+          <label className="field__label" htmlFor="lock-email">Email</label>
+          <input
+            id="lock-email"
+            className="field__input"
+            type="email"
+            inputMode="email"
+            autoComplete="username"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoFocus={!initialEmail}
+          />
+        </div>
+
         <div className="field">
           <label className="field__label" htmlFor="lock-pwd">Master password</label>
           <input
@@ -43,10 +60,10 @@ export function LockScreen({ hostHint, onUnlock, onOpenSettings }: Props) {
             className="field__input"
             type="password"
             autoComplete="current-password"
-            autoFocus
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoFocus={!!initialEmail}
           />
         </div>
 
@@ -55,7 +72,7 @@ export function LockScreen({ hostHint, onUnlock, onOpenSettings }: Props) {
         <button
           className="btn btn--primary btn--block"
           type="submit"
-          disabled={!password || busy}
+          disabled={!email || !password || busy}
         >
           {busy ? '잠금 해제 중…' : '잠금 해제'}
         </button>
