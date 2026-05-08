@@ -10,6 +10,7 @@ export interface ItemSummary {
   name: string;
   username?: string;
   url?: string;
+  matchUrls?: string;        // 자동완성 매칭 전용 — 비어있으면 url로 fallback
   catalogSlug?: string;
   hasTotp: boolean;
 }

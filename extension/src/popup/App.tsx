@@ -6,6 +6,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { getSettings, isConfigured, setSettings, type SbSettings } from '../shared/settings';
 import { sendMessage, type SbState } from '../shared/messages';
 import type { ItemSummary } from '../shared/vaultTypes';
+import { itemMatches } from '../shared/hostMatch';
 
 // Day 3 — 진짜 백엔드 + KEK + 복호화 흐름. background에서 단일 진실로 GET_STATE / LIST_ITEMS.
 
@@ -102,16 +103,21 @@ export function App() {
     })();
   }, []);
 
-  // 잠금 해제된 직후 항목 fetch
+  // 잠금 해제된 직후 항목 fetch — popup 열 때마다 force=true로 vault 본체 변경사항 즉시 반영
   useEffect(() => {
     if (state.screen.kind !== 'unlocked') return;
     let cancelled = false;
     (async () => {
-      const r = await sendMessage<ItemSummary[]>({ kind: 'LIST_ITEMS' });
+      const r = await sendMessage<ItemSummary[]>({ kind: 'LIST_ITEMS', force: true });
       if (!cancelled && r.ok) dispatch({ type: 'SET_ITEMS', items: r.data });
     })();
     return () => { cancelled = true; };
   }, [state.screen.kind]);
+
+  const refreshItems = useCallback(async () => {
+    const r = await sendMessage<ItemSummary[]>({ kind: 'LIST_ITEMS', force: true });
+    if (r.ok) dispatch({ type: 'SET_ITEMS', items: r.data });
+  }, []);
 
   if (state.screen.kind === 'loading' || !state.settings) {
     return <div className="screen" />;
@@ -203,7 +209,7 @@ export function App() {
     username: i.username,
     url: i.url,
     catalogSlug: i.catalogSlug,
-    matchedHost: !!state.currentHost && hostMatches(state.currentHost, i.url),
+    matchedHost: !!state.currentHost && itemMatches(i, state.currentHost),
   }));
 
   return (
@@ -222,6 +228,7 @@ export function App() {
         await sendMessage({ kind: 'LOCK' });
         await refreshState();
       }}
+      onRefresh={refreshItems}
       onOpenSettings={() => dispatch({ type: 'OPEN_SETTINGS' })}
     />
   );
@@ -240,17 +247,4 @@ async function getActiveTabHost(): Promise<string> {
 function shortHost(backendUrl: string): string {
   if (!backendUrl) return '';
   try { return new URL(backendUrl).host; } catch { return backendUrl; }
-}
-
-function hostMatches(currentHost: string, itemUrl: string | undefined): boolean {
-  if (!itemUrl) return false;
-  try {
-    const itemHost = new URL(itemUrl).host;
-    // root 매칭: 둘 중 하나가 다른 쪽의 suffix면 매칭 (www.github.com vs github.com)
-    return itemHost === currentHost ||
-      currentHost.endsWith('.' + itemHost) ||
-      itemHost.endsWith('.' + currentHost);
-  } catch {
-    return false;
-  }
 }

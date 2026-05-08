@@ -13,14 +13,17 @@ export type SbMessage =
   | { kind: 'UNLOCK'; email: string; password: string }
   | { kind: 'UNLOCK_2FA'; code: string }
   | { kind: 'LOCK' }
-  | { kind: 'LIST_ITEMS' }
+  | { kind: 'LIST_ITEMS'; force?: boolean }      // popup 마운트 시 force=true로 항상 fresh
   | { kind: 'GET_ITEM_PLAINTEXT'; id: string }
   // popup → background → 활성 탭 content
   | { kind: 'FILL_ACTIVE_TAB'; id: string }
   // content → background
   | { kind: 'CONTENT_LIST_MATCHES'; host: string }
+  | { kind: 'RECORD_LAST_FILL'; id: string; host: string }
+  | { kind: 'GET_AUTO_TOTP'; host: string }      // 응답: {code, autoSubmit} | null
   // background → content (chrome.tabs.sendMessage)
   | { kind: 'CONTENT_FILL'; username?: string; password?: string }
+  | { kind: 'CONTENT_STATE_CHANGED' }   // 잠금/해제 알림 — content가 fresh fetch
   // background ↔ offscreen (Argon2 위임)
   | {
       kind: 'OFFSCREEN_ARGON2';

@@ -5,7 +5,9 @@
 const SETTINGS_KEY = 'sb.settings';
 
 export interface SbSettings {
-  backendUrl: string; // 예: https://secretbox.lan/api/v1
+  backendUrl: string;          // 예: https://secretbox.lan/api/v1
+  totpAutofill: boolean;       // 2FA 페이지에서 TOTP 자동 입력 (기본 true)
+  totpAutoSubmit: boolean;     // 자동 입력 후 submit까지 자동 (기본 false — 사용자가 명시적 활성화)
 }
 
 // DEV: 개발 중인 LAN 백엔드 — 확장 설치/업데이트 시 자동 시드 (background/index.ts).
@@ -14,6 +16,8 @@ export const DEV_DEFAULT_BACKEND_URL = 'http://10.23.12.69:6334/api/v1';
 
 const DEFAULT_SETTINGS: SbSettings = {
   backendUrl: DEV_DEFAULT_BACKEND_URL,
+  totpAutofill: true,
+  totpAutoSubmit: false,
 };
 
 export async function getSettings(): Promise<SbSettings> {

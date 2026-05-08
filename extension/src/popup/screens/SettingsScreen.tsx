@@ -1,6 +1,38 @@
 import { FormEvent, useState } from 'react';
 import { normalizeBackendUrl, type SbSettings } from '../../shared/settings';
 
+interface ToggleProps {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (next: boolean) => void;
+}
+
+function Toggle({ label, hint, checked, onChange }: ToggleProps) {
+  return (
+    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer' }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{
+          width: 16, height: 16, marginTop: 2, accentColor: 'var(--amber)', cursor: 'pointer',
+        }}
+      />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--ink-primary)', display: 'block', lineHeight: 1.4 }}>
+          {label}
+        </span>
+        {hint && (
+          <span style={{ fontSize: 11, color: 'var(--ink-muted)', display: 'block', lineHeight: 1.5, marginTop: 2 }}>
+            {hint}
+          </span>
+        )}
+      </span>
+    </label>
+  );
+}
+
 interface Props {
   settings: SbSettings;
   isLocked: boolean;             // 첫 실행(needs-config)에선 뒤로가기 X
@@ -11,6 +43,8 @@ interface Props {
 
 export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }: Props) {
   const [backendUrl, setBackendUrl] = useState(settings.backendUrl);
+  const [totpAutofill, setTotpAutofill] = useState(settings.totpAutofill);
+  const [totpAutoSubmit, setTotpAutoSubmit] = useState(settings.totpAutoSubmit);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -20,7 +54,12 @@ export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }
     setBusy(true);
     setSaved(false);
     try {
-      await onSave({ ...settings, backendUrl: normalizeBackendUrl(backendUrl) });
+      await onSave({
+        ...settings,
+        backendUrl: normalizeBackendUrl(backendUrl),
+        totpAutofill,
+        totpAutoSubmit,
+      });
       setSaved(true);
     } finally {
       setBusy(false);
@@ -61,7 +100,26 @@ export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }
               required
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+          <h2 className="settings__sectionTitle" style={{ marginTop: 14 }}>2FA 자동 입력</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+            <Toggle
+              label="TOTP 자동 입력"
+              hint="2FA 페이지 진입 시 직전에 사용한 항목의 OTP 코드를 자동으로 채움."
+              checked={totpAutofill}
+              onChange={setTotpAutofill}
+            />
+            <Toggle
+              label="자동 입력 후 자동 submit"
+              hint="OTP 입력 직후 폼 자동 제출. 잘못된 항목 매칭 시 즉시 잠기는 위험 있어 기본 OFF."
+              checked={totpAutoSubmit}
+              onChange={(v) => {
+                setTotpAutoSubmit(v);
+                if (v) setTotpAutofill(true); // submit하려면 autofill 필수
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 12 }}>
             <button className="btn btn--primary" type="submit" disabled={busy}>
               {busy ? '저장 중…' : '저장'}
             </button>

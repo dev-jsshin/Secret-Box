@@ -28,7 +28,9 @@ export interface VaultItemPlaintext {
   // ---------- login ----------
   username?: string;
   password?: string;           // login에서 필수, wifi에서도 사용
-  url?: string;                // login + apikey
+  url?: string;                // login + apikey — 단일 "웹사이트" (사이트 열기 + 표시)
+  matchUrls?: string;          // login — 자동완성 매칭용 다중 URL/키워드 (콤마/줄바꿈 구분).
+                               //         비어있으면 url 값으로 fallback.
   totpSecret?: string;         // base32 — RFC 6238 TOTP
 
   // ---------- note ----------

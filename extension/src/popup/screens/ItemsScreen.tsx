@@ -14,10 +14,12 @@ interface Props {
   currentHost: string;
   onPickItem: (id: string) => void;
   onLock: () => void;
+  onRefresh: () => Promise<void> | void;
   onOpenSettings: () => void;
 }
 
-export function ItemsScreen({ items, currentHost, onPickItem, onLock, onOpenSettings }: Props) {
+export function ItemsScreen({ items, currentHost, onPickItem, onLock, onRefresh, onOpenSettings }: Props) {
+  const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
 
   const { matched, others } = useMemo(() => {
@@ -43,6 +45,19 @@ export function ItemsScreen({ items, currentHost, onPickItem, onLock, onOpenSett
           SecretBox · {currentHost || 'no tab'}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
+          <button
+            className="iconBtn"
+            type="button"
+            title="새로고침"
+            onClick={async () => {
+              if (refreshing) return;
+              setRefreshing(true);
+              try { await onRefresh(); } finally { setRefreshing(false); }
+            }}
+            style={refreshing ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+          >
+            ↻
+          </button>
           <button className="iconBtn" type="button" title="설정" onClick={onOpenSettings}>
             ⚙
           </button>

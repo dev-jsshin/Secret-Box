@@ -22,12 +22,21 @@ interface RawPlaintext {
   username?: string;
   password?: string;
   url?: string;
+  matchUrls?: string;
   totpSecret?: string;
   catalogSlug?: string;
 }
 
 // SW 모듈 변수 — 메모리 캐시. SW가 죽으면 다시 채움. KEK은 storage.session에서.
-let cache: { byId: Map<string, ItemPlaintext>; summaries: ItemSummary[] } | null = null;
+// TTL: 사용자가 vault 본체 앱에서 수정한 후 너무 오래 stale 데이터 보지 않도록 짧게.
+// 5초 — chip 매칭이 한 번에 여러 input에서 발사돼도 중복 fetch는 막아주면서, 웹에서 수정한
+// 직후 다른 탭으로 옮겨가는 정도의 짧은 시간만 캐시.
+const CACHE_TTL_MS = 5_000;
+let cache: {
+  byId: Map<string, ItemPlaintext>;
+  summaries: ItemSummary[];
+  fetchedAt: number;
+} | null = null;
 
 async function getDek(): Promise<Uint8Array> {
   const session = await getSessionState();
@@ -65,6 +74,7 @@ export async function refreshVault(): Promise<ItemSummary[]> {
         name: pt.name,
         username: pt.username,
         url: pt.url,
+        matchUrls: pt.matchUrls,
         catalogSlug: pt.catalogSlug,
         hasTotp: !!pt.totpSecret,
       });
@@ -73,17 +83,19 @@ export async function refreshVault(): Promise<ItemSummary[]> {
     }
   }
 
-  cache = { byId, summaries };
+  cache = { byId, summaries, fetchedAt: Date.now() };
   return summaries;
 }
 
 export async function listSummaries(): Promise<ItemSummary[]> {
-  if (!cache) return refreshVault();
+  if (!cache || Date.now() - cache.fetchedAt > CACHE_TTL_MS) {
+    return refreshVault();
+  }
   return cache.summaries;
 }
 
 export async function getItemPlaintext(id: string): Promise<ItemPlaintext | null> {
-  if (!cache) await refreshVault();
+  if (!cache || Date.now() - cache.fetchedAt > CACHE_TTL_MS) await refreshVault();
   return cache?.byId.get(id) ?? null;
 }
 

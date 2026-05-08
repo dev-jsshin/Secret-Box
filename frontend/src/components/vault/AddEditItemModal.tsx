@@ -93,6 +93,7 @@ export default function AddEditItemModal({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [url, setUrl] = useState('');
+  const [matchUrls, setMatchUrls] = useState('');
   const [notes, setNotes] = useState('');
   const [content, setContent] = useState('');
   const [totpSecret, setTotpSecret] = useState('');
@@ -165,6 +166,7 @@ export default function AddEditItemModal({
       setUsername(p.username ?? '');
       setPassword(p.password ?? '');
       setUrl(p.url ?? '');
+      setMatchUrls(p.matchUrls ?? '');
       setNotes(p.notes ?? '');
       setContent(p.content ?? '');
       setTotpSecret(p.totpSecret ?? '');
@@ -183,7 +185,7 @@ export default function AddEditItemModal({
       setApiExpiresAt(p.apiExpiresAt ?? '');
       setStep('form');
       // 편집 모드 — 추가 정보 중 하나라도 값 있으면 자동 펼침
-      const hasExtras = !!(p.alias || p.url || p.notes || p.totpSecret || p.cardPin);
+      const hasExtras = !!(p.alias || p.url || p.matchUrls || p.notes || p.totpSecret || p.cardPin);
       setShowExtras(hasExtras);
     } else {
       // 새 항목 — initialType이 'login' 외이면 picker 건너뛰고 바로 폼
@@ -196,6 +198,7 @@ export default function AddEditItemModal({
       setUsername('');
       setPassword('');
       setUrl('');
+      setMatchUrls('');
       setNotes('');
       setContent('');
       setTotpSecret('');
@@ -337,6 +340,7 @@ export default function AddEditItemModal({
           username: username.trim(),
           password,
           url: url.trim() || undefined,
+          matchUrls: matchUrls.trim() || undefined,
           notes: notes.trim() || undefined,
           totpSecret: cleanedTotp || undefined,
           favorite: initialItem?.plaintext.favorite,
@@ -456,6 +460,7 @@ export default function AddEditItemModal({
                 username={username} setUsername={setUsername}
                 password={password} setPassword={setPassword}
                 url={url} setUrl={setUrl}
+                matchUrls={matchUrls} setMatchUrls={setMatchUrls}
                 notes={notes} setNotes={setNotes}
                 totpSecret={totpSecret} totpError={totpError}
                 onTotpChange={handleTotpChange}
@@ -643,6 +648,7 @@ interface LoginFormViewProps {
   username: string; setUsername: (v: string) => void;
   password: string; setPassword: (v: string) => void;
   url: string; setUrl: (v: string) => void;
+  matchUrls: string; setMatchUrls: (v: string) => void;
   notes: string; setNotes: (v: string) => void;
   totpSecret: string; totpError: string;
   onTotpChange: (v: string) => void;
@@ -657,7 +663,7 @@ interface LoginFormViewProps {
 function LoginFormView(p: LoginFormViewProps) {
   const strength = scorePassword(p.password);
   const extrasFilled =
-    [p.alias, p.url, p.notes, p.totpSecret].filter((v) => v.trim()).length;
+    [p.alias, p.url, p.matchUrls, p.notes, p.totpSecret].filter((v) => v.trim()).length;
 
   const [popPos, setPopPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -844,10 +850,21 @@ function LoginFormView(p: LoginFormViewProps) {
             <FormField
               id="ai-url"
               type="url"
-              label="URL"
-              placeholder="https://..."
+              label="웹사이트"
+              placeholder="https://naver.com"
               value={p.url}
               onChange={(e) => p.setUrl(e.target.value)}
+              hint="단일 — 카드의 ‘사이트 열기’ 버튼과 표시에 사용."
+            />
+
+            <FormField
+              id="ai-match-urls"
+              type="text"
+              label="URL (자동완성 매칭)"
+              placeholder="naver, m.naver.com, blog.naver.com"
+              value={p.matchUrls}
+              onChange={(e) => p.setMatchUrls(e.target.value)}
+              hint="여러 개는 콤마/줄바꿈으로 구분. 점 없는 단어는 키워드로 host에 포함 매칭. 비워두면 위 ‘웹사이트’ 값으로 자동 매칭."
             />
 
             <FormField
