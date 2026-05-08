@@ -4,6 +4,7 @@
 
 Zero-knowledge 보안 매니저.
 서버는 마스터 비밀번호도, 저장된 평문(패스워드/메모/카드/WiFi/API 시크릿)도 절대 보지 못합니다.
+Chrome 확장으로 인라인 자동완성 + TOTP 자동 입력까지 같은 ZK 모델로 동작합니다.
 
 ## 아키텍처
 
@@ -177,6 +178,84 @@ docker compose down -v
 
 ---
 
+## 6. Chrome 확장 (자동완성)
+
+브라우저 로그인 폼 옆에 인라인 칩으로 자동완성 + 2FA 페이지 TOTP 자동 입력. 확장은 백엔드와 직접 통신하며, **KEK은 `chrome.storage.session`에만, DEK은 service worker 메모리에만** — 백엔드는 여전히 평문/KEK 못 봅니다 (vault 본체 앱과 동일한 ZK 모델).
+
+### 설치 (개발자 모드)
+
+```bash
+cd extension
+npm install
+npm run build      # dist/ 생성 — popup/background/content/offscreen 멀티 엔트리
+```
+
+1. `chrome://extensions` → 우상단 **개발자 모드** ON
+2. **압축해제된 확장 프로그램을 로드** → `extension/dist` 선택
+3. 툴바의 SecretBox 아이콘 클릭 → 백엔드 URL 입력 (예: `http://10.x.x.x:6334`) → 저장
+4. 마스터 계정 이메일/비번으로 잠금 해제 (2FA 켜져 있으면 코드 입력)
+
+> 코드 수정 후 `chrome://extensions`에서 확장의 ⟳ 한 번 누르면 됨. 이미 떠있던 탭의 content script도 자동 재주입.
+
+### 기능
+
+- **인라인 칩** — `<input type="password">` 옆에 SecretBox 아이콘. 클릭 시 현재 사이트 매칭 항목 드롭다운. **Shadow DOM**으로 호스트 페이지 CSS 격리.
+- **자동 채우기** — username + password를 native value setter + input/change 이벤트로 채움 (React/Vue controlled input 호환).
+- **TOTP 자동 입력** — 비번 폼 채운 직후 2FA 페이지로 넘어가면 항목의 `totpSecret`으로 OTP 코드 생성 후 채움. 옵션으로 자동 submit. `autocomplete="one-time-code"` / `inputmode="numeric"` + name 패턴(`mfa|otp|totp|2fa|...`) 감지.
+- **1Password-style URL 매칭** — 항목에 두 필드:
+  - **웹사이트** (단일) — 카드 표시 + "사이트 열기" 버튼
+  - **URL (자동완성 매칭)** (다중, 콤마/줄바꿈) — 자동완성 트리거. 비워두면 웹사이트 값으로 fallback
+- **매칭 등급 (3 → 1)** — exact host > suffix > root domain. 가장 높은 등급의 매칭만 칩에 노출 (회사 인트라에서 형제 서브도메인이 우르르 뜨는 거 방지).
+- **키워드 매칭** — `naver`처럼 점 없는 토큰은 host의 label whole-word로 매칭. `naver.com` / `m.naver.com` / `naver-shop.com` ✓ / `mynaverstuff.com` ✗ (false positive 차단).
+- **세션 broadcast** — popup에서 잠금/해제 시 모든 탭의 content script에 즉시 알림 → 칩 상태 즉시 갱신.
+- **vault 캐시 5초 TTL** + popup 마운트마다 force refresh — 웹에서 항목 수정 후 빠르게 반영.
+
+### popup 화면
+
+| 화면 | 트리거 |
+|---|---|
+| 백엔드 설정 | 첫 실행 (URL 미설정) |
+| 잠금 해제 | 백엔드 OK + KEK 없음 |
+| 2단계 인증 | 마스터 2FA 켠 계정 |
+| 항목 리스트 | 잠금 해제 후 — 검색 + "이 사이트" 그룹 + 새로고침 + 즉시 잠금 |
+| 설정 | 백엔드 URL / TOTP 자동 입력 / 자동 submit 토글 |
+
+### 디렉토리 (extension)
+
+```
+extension/
+├── public/manifest.json      MV3 manifest (host_permissions: http/https/*, scripting/storage/offscreen)
+├── src/
+│   ├── popup/                React UI — App.tsx + screens(Lock, TwoFactor, Items, Settings)
+│   ├── background/           Service Worker
+│   │   ├── index.ts          메시지 라우터, broadcast, content 재주입
+│   │   ├── api.ts            apiFetch + 401 refresh
+│   │   ├── auth.ts           preLogin → Argon2(offscreen) → login → KEK 보관
+│   │   ├── vault.ts          /vault/items 복호화 + TTL 캐시
+│   │   ├── lastFill.ts       최근 채운 항목 추적 (TOTP 매칭용)
+│   │   └── offscreen.ts      offscreen 문서 RPC 헬퍼
+│   ├── content/              페이지 주입 (IIFE 단일 파일)
+│   │   ├── formDetect.ts     password + username 후보 추론
+│   │   ├── otpDetect.ts      OTP input 휴리스틱
+│   │   ├── chip.ts           Shadow DOM 칩 + 드롭다운
+│   │   ├── fill.ts           native value setter + 이벤트 디스패치
+│   │   └── index.ts          오케스트레이션 + MutationObserver
+│   ├── offscreen/            hash-wasm Argon2 위임 (MV3 SW에서 wasm cold-start 회피)
+│   └── shared/               messages / sessionStore / settings / hostMatch / vaultTypes
+├── vite.config.ts            popup/offscreen(HTML) + background(ESM)
+└── vite.content.config.ts    content (IIFE — MV3 content script는 ES import 불가)
+```
+
+### 한계 / 개발 중
+
+- ⬜ 분할 OTP input (6박스 1자리씩) 미지원
+- ⬜ auto-lock 타이머 (지금은 수동 잠금 또는 브라우저 종료)
+- ⬜ 새 비번 저장 제안 (가입 페이지 감지)
+- ⬜ 다중 password 폼 (가입 화면 등) 처리
+- ⬜ Chrome 웹스토어 패키징
+
+---
+
 ## 설정 변경
 
 ### 포트 변경
@@ -280,6 +359,15 @@ docker compose up -d --build backend
 - **Settings 4탭** — 계정 / 백업 / 보안 / 활동.
 - **모바일 반응형** — 360/375/390/414/768 polished. iOS notch safe-area, dvh, 16px input zoom 방지.
 
+### 자동완성 (Chrome 확장 — extension/)
+
+- **인라인 칩** — 페이지 password input 옆 SecretBox 아이콘. Shadow DOM으로 호스트 CSS 격리.
+- **TOTP 자동 입력** — 비번 채운 후 2FA 페이지에서 OTP 코드 자동 입력 (옵션 자동 submit).
+- **1P-style URL 분리** — 웹사이트(표시) + URL 매칭(다중·키워드) 별개 필드. `naver` 키워드는 label whole-word로만 매칭 — false positive 차단.
+- **Zero-knowledge 유지** — KEK은 `chrome.storage.session`, DEK은 SW 메모리에 짧게. TOTP secret은 SW에만 — 코드만 content script로 흐름.
+
+자세한 셋업/구조는 위 [§6 Chrome 확장](#6-chrome-확장-자동완성).
+
 ---
 
 ## 디렉토리 구조
@@ -328,6 +416,18 @@ docker compose up -d --build backend
 │       │                     vault, catalog
 │       └── store/            zustand — session (DEK 메모리만),
 │                             lockSettings (자동 잠금 설정)
+├── extension/                Chrome 확장 (MV3) — 자동완성 + TOTP
+│   ├── public/manifest.json  manifest (host_permissions, scripting, offscreen)
+│   ├── src/
+│   │   ├── popup/            잠금 해제 + 항목 리스트 (React)
+│   │   ├── background/       SW — 메시지 라우팅, 백엔드 호출, vault 캐시,
+│   │   │                     lastFill (TOTP 매칭), offscreen Argon2 위임
+│   │   ├── content/          페이지 폼 감지 + Shadow DOM 칩 + 채우기 (IIFE)
+│   │   ├── offscreen/        Argon2(wasm) 전용 컨텍스트
+│   │   └── shared/           messages / sessionStore / settings / hostMatch /
+│   │                         vaultTypes
+│   ├── vite.config.ts        popup/offscreen/background (ESM)
+│   └── vite.content.config.ts content (IIFE)
 ├── docker-compose.yml        Postgres + backend + frontend 통합
 ├── .env.example              도커 통합 모드 템플릿
 └── LICENSE                   MIT
@@ -354,6 +454,9 @@ docker compose up -d --build backend
 - ✅ 사이드바 + 모바일 탭바 (4-탭 + 더보기 시트)
 - ✅ 모바일 반응형 폴리싱 (360~768 + iOS dvh/safe-area)
 - ✅ Docker 통합 self-host (compose up + nginx HTTPS)
+- ✅ Chrome 확장 (MV3) — 인라인 자동완성 칩, TOTP 자동 입력, 1P-style URL 매칭, content script 자동 재주입
+- ⬜ Chrome 확장 — auto-lock 타이머 + 새 비번 저장 제안 + 분할 OTP input
+- ⬜ Chrome 확장 — 웹스토어 패키징
 - ⬜ 항목 import (Bitwarden/1Password CSV)
 - ⬜ 키보드 단축키 (Ctrl+K, N, ESC, ?)
 - ⬜ 운영 자동화 (HTTPS cert 자동 갱신, 백업 cron, 모니터링)
