@@ -11,6 +11,7 @@ import { getSettings, setSettings, DEV_DEFAULT_BACKEND_URL } from '../shared/set
 import { recordLastFill, getLastFillFor } from './lastFill';
 import { generateTotp } from '@sb/lib/totp';
 import { pickBestTier } from '../shared/hostMatch';
+import { scheduleAutoLock, cancelAutoLock, AUTO_LOCK_ALARM } from './autoLock';
 
 chrome.runtime.onInstalled.addListener(async (d) => {
   console.log('[SecretBox/bg] installed', d.reason);
@@ -47,8 +48,42 @@ setSessionExpiredHandler(async () => {
   console.log('[SecretBox/bg] session expired — locking');
   await lock();
   clearVaultCache();
+  await cancelAutoLock();
   await broadcastStateChanged();
 });
+
+// 자동 잠금 alarm 발화 — KEK 폐기 + 모든 탭에 알림.
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== AUTO_LOCK_ALARM) return;
+  console.log('[SecretBox/bg] auto-lock fired');
+  await lock();
+  clearVaultCache();
+  await broadcastStateChanged();
+});
+
+// 사용자가 popup에서 자동 잠금 시간을 바꾸면 즉시 reschedule.
+chrome.storage.onChanged.addListener(async (changes, area) => {
+  if (area !== 'local') return;
+  if (!('sb.settings' in changes)) return;
+  const session = await getSessionState();
+  if (session) await scheduleAutoLock();
+});
+
+// 사용자가 vault를 만지는 메시지 — 받을 때마다 자동 잠금 타이머 reset.
+const ACTIVITY_KINDS = new Set<string>([
+  'GET_STATE',
+  'LIST_ITEMS',
+  'GET_ITEM_PLAINTEXT',
+  'CONTENT_LIST_MATCHES',
+  'FILL_ACTIVE_TAB',
+  'RECORD_LAST_FILL',
+  'GET_AUTO_TOTP',
+]);
+async function touchActivity(): Promise<void> {
+  const session = await getSessionState();
+  if (!session) return;
+  await scheduleAutoLock();
+}
 
 // chrome.storage.session은 content script에 onChanged 이벤트를 안 흘려보낸다(MV3 기본).
 // 따라서 잠금/해제가 일어났을 때 BG가 명시적으로 모든 탭에 알려준다.
@@ -86,6 +121,8 @@ async function getState(): Promise<SbState> {
 // 핸들러 — 모든 분기는 try/catch로 감싸 응답 객체로 통일.
 async function dispatch(msg: SbMessage): Promise<SbResponse> {
   try {
+    // 사용자 활동 신호 → 자동 잠금 타이머 reset
+    if (ACTIVITY_KINDS.has(msg.kind)) await touchActivity();
     switch (msg.kind) {
       case 'PING':
         return { ok: true, data: { kind: 'PONG', from: 'background' } satisfies PongData };
@@ -95,19 +132,26 @@ async function dispatch(msg: SbMessage): Promise<SbResponse> {
 
       case 'UNLOCK': {
         const out = await unlock(msg.email, msg.password);
-        if (out.phase === 'unlocked') await broadcastStateChanged();
+        if (out.phase === 'unlocked') {
+          await scheduleAutoLock();
+          await broadcastStateChanged();
+        }
         return { ok: true, data: out };
       }
 
       case 'UNLOCK_2FA': {
         const out = await unlock2fa(msg.code);
-        if (out.phase === 'unlocked') await broadcastStateChanged();
+        if (out.phase === 'unlocked') {
+          await scheduleAutoLock();
+          await broadcastStateChanged();
+        }
         return { ok: true, data: out };
       }
 
       case 'LOCK':
         await lock();
         clearVaultCache();
+        await cancelAutoLock();
         await broadcastStateChanged();
         return { ok: true, data: null };
 

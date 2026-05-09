@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { normalizeBackendUrl, type SbSettings } from '../../shared/settings';
+import { AUTO_LOCK_OPTIONS, normalizeBackendUrl, type SbSettings } from '../../shared/settings';
 
 interface ToggleProps {
   label: string;
@@ -45,6 +45,7 @@ export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }
   const [backendUrl, setBackendUrl] = useState(settings.backendUrl);
   const [totpAutofill, setTotpAutofill] = useState(settings.totpAutofill);
   const [totpAutoSubmit, setTotpAutoSubmit] = useState(settings.totpAutoSubmit);
+  const [autoLockMinutes, setAutoLockMinutes] = useState(settings.autoLockMinutes);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -59,6 +60,7 @@ export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }
         backendUrl: normalizeBackendUrl(backendUrl),
         totpAutofill,
         totpAutoSubmit,
+        autoLockMinutes,
       });
       setSaved(true);
     } finally {
@@ -100,6 +102,23 @@ export function SettingsScreen({ settings, isLocked, onSave, onBack, onLockNow }
               required
             />
           </div>
+          <h2 className="settings__sectionTitle" style={{ marginTop: 14 }}>자동 잠금</h2>
+          <p className="settings__sectionHint">
+            아무 활동 없이 N분 지나면 KEK을 폐기하고 잠금 화면으로. 자리 비울 때 vault 보호.
+          </p>
+          <div className="field" style={{ marginTop: 4 }}>
+            <select
+              className="field__input"
+              value={autoLockMinutes}
+              onChange={(e) => setAutoLockMinutes(Number(e.target.value))}
+              style={{ cursor: 'pointer' }}
+            >
+              {AUTO_LOCK_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
           <h2 className="settings__sectionTitle" style={{ marginTop: 14 }}>2FA 자동 입력</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
             <Toggle
